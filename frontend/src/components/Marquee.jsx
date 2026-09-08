@@ -6,7 +6,7 @@ const ITEMS = [
   "Tested in Indian heat & humidity",
   "Updated prices, checked weekly",
   "Real pet parents, real homes",
-  "Affiliate supported, reader first",
+  "Buy direct, reader first",
 ];
 
 export const Marquee = () => {

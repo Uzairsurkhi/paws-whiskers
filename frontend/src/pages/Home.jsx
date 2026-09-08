@@ -261,7 +261,7 @@ const TRUST = [
   { icon: FlaskConical, title: "Clear comparisons", desc: "Every pick is compared on protein, materials, price per day and real-world durability — side by side." },
   { icon: ShieldCheck, title: "Independent recommendations", desc: "We buy what we test. Brands cannot pay for rankings, labels or review scores." },
   { icon: Thermometer, title: "Tested for Indian conditions", desc: "Humidity, heat, hard water and small flats — our checks match how Indian pets actually live." },
-  { icon: HandCoins, title: "Updated prices", desc: "Prices are re-checked weekly across Amazon.in, Flipkart and specialty pet stores." },
+  { icon: HandCoins, title: "Updated prices", desc: "Prices are re-checked weekly against Indian pet stores so what you pay here is always fair." },
 ];
 
 const WhyTrust = () => (

@@ -103,13 +103,11 @@ export const SearchModal = ({ open, onClose }) => {
                 <div className="p-2">
                   <p className="px-3 py-1 font-mono-accent text-[11px] font-bold uppercase tracking-[0.25em] text-stone-400">Products</p>
                   {results.products.map((p) => (
-                    <a
+                    <button
                       key={p.id}
                       data-testid={`search-result-product-${p.id}`}
-                      href={p.affiliate_url}
-                      target="_blank"
-                      rel="noopener noreferrer sponsored"
-                      className="flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-orange-50"
+                      onClick={() => { onClose(); navigate(`/products/${p.id}`); }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-orange-50"
                     >
                       <img src={p.image} alt="" className="h-11 w-11 rounded-xl object-cover" />
                       <span className="min-w-0 flex-1">
@@ -117,7 +115,7 @@ export const SearchModal = ({ open, onClose }) => {
                         <span className="block text-xs text-stone-500">{p.price_range} · ★ {p.rating.toFixed(1)}</span>
                       </span>
                       <ArrowUpRight size={16} className="text-[#EA580C]" />
-                    </a>
+                    </button>
                   ))}
                 </div>
               )}

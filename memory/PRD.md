@@ -9,7 +9,7 @@ Article page "Best Cat Food in India (2026)": quick answer, comparison table nea
 ## Architecture
 - Frontend: React 19 + Tailwind + framer-motion + lenis (smooth scroll). Pages: Home (/), Article (/guides/best-cat-food-india-2026). Components: Header, Footer, Marquee, ProductCard, Newsletter, SearchModal, Reveal (motion helpers). Fraunces (display) + Plus Jakarta Sans (body) + JetBrains Mono (labels/prices).
 - Backend: FastAPI + MongoDB (motor). Seeded collections: products (10), guides (6), categories (8). Endpoints: /api/health, /api/products (filters: pet, category, featured), /api/products/{id}, /api/guides, /api/categories, /api/search?q=, /api/newsletter (POST email).
-- Affiliate buttons link to real Amazon.in search pages (placeholder tags to swap for real affiliate IDs later).
+- On-site product pages: /products/{id} with variants (pack sizes + ₹ prices), Buy now → Stripe Checkout (POST /api/products/checkout, ad-hoc INR price_data, tax_code txcd_99999999, shipping address IN/US). No external affiliate links anywhere.
 - Design system lives in /app/design_guidelines.json. Palette: #FAF7F2 cream, #1C1917 charcoal, #EA580C coral, #0D9488 teal.
 
 ## User personas
@@ -25,10 +25,18 @@ Article page "Best Cat Food in India (2026)": quick answer, comparison table nea
 - Stripe payments (Emergent-managed claimable sandbox, TEST mode, US account — IN unsupported by Stripe): one-time reader-support tiers ₹99/₹299/₹499 in INR via hosted Checkout; backend routes /api/payments/tiers, /api/payments/checkout, /api/payments/status/{session_id} (with Stripe-poll fallback), /api/stripe/webhook (idempotent); payment_transactions collection in MongoDB; success/cancel pages with status polling. Tax mode: full (Stripe managed payments). Verified e2e with test card 4242 4242 4242 4242 → ₹322.55 paid (₹299 + 7.875% tax).
 - setup_stripe.py: idempotent catalog sync (product + prices by lookup_key, tax settings).
 
+## Implemented (2026-06, de-affiliation + on-site shop)
+- Removed all Amazon.in/Flipkart links, affiliate disclosure banners (Article + Footer) and "affiliate" wording (Marquee, trust strip).
+- Products now carry `variants: [{label, price}]` (affiliate_url dropped; startup upserts seed so schema changes propagate).
+- New Product page (/products/:id): sticky hero image, label/rating/best-for, BuyBox (pack-size pills, qty 1–10, live ₹ total), Buy now → Stripe hosted Checkout; pros/cons, ingredients, India tip, related products.
+- POST /api/products/checkout (404 unknown product, 400 unknown variant, 422 qty bounds); payment_transactions now store kind=order|support + product_name/variant/quantity; /api/payments/status returns them; success page shows "Order confirmed" for orders.
+- ProductCard "View & Buy", Article buttons "Buy from ₹…", search results → internal product pages.
+- Tested by testing_agent (iteration_1.json): all backend + frontend flows pass incl. full Stripe test purchase.
+
 ## Backlog (prioritized)
-- P0: Admin CMS to edit products/guides (user asked for DB content + simple admin later).
+- P0: Admin CMS to edit products/guides/prices/stock (user asked for DB content + simple admin later).
 - P0: Individual article pages for the other 5 guides (currently "Coming soon" toasts).
-- P1: Real affiliate tags on Amazon/Flipkart links (needs user's affiliate IDs).
+- P1: Orders dashboard + order confirmation email (Resend) now that products are sold on-site.
 - P1: User to claim the Stripe sandbox (onboarding_url) + complete KYC before deploy; platform auto-switches to live keys on approval.
 - P1: Advanced filters (kitten/puppy/adult, budget slider, food type, breed size).
 - P1: Monthly pet-food budget calculator in ₹.

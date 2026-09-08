@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Star, ArrowUpRight, Dog, Cat } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Star, ArrowRight, Dog, Cat } from "lucide-react";
 
 const LABEL_STYLES = {
   "Best Overall": "bg-amber-100 text-amber-900 border-amber-300",
@@ -17,7 +18,7 @@ export const ProductCard = ({ product, index = 0, compact = false }) => (
     whileHover={{ y: -6 }}
     className="group flex flex-col overflow-hidden rounded-3xl border border-[#E7E2DA] bg-white shadow-[0_2px_20px_-8px_rgba(28,25,23,0.12)] transition-shadow duration-300 hover:shadow-[0_24px_50px_-20px_rgba(234,88,12,0.28)]"
   >
-    <div className="relative h-52 overflow-hidden bg-[#F4EFEA]">
+    <Link to={`/products/${product.id}`} data-testid={`product-image-link-${product.id}`} className="relative block h-52 overflow-hidden bg-[#F4EFEA]">
       <div className="spotlight absolute inset-0 z-10" />
       <img
         src={product.image}
@@ -33,12 +34,14 @@ export const ProductCard = ({ product, index = 0, compact = false }) => (
       <span className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur">
         {product.pet === "dog" ? <Dog size={17} /> : <Cat size={17} />}
       </span>
-    </div>
+    </Link>
 
     <div className="flex flex-1 flex-col gap-3 p-5 sm:p-6">
       <div>
         <p className="font-mono-accent text-[11px] font-bold uppercase tracking-[0.2em] text-stone-400">{product.brand}</p>
-        <h3 className="font-display mt-1 text-lg font-bold leading-snug tracking-tight text-stone-900">{product.name}</h3>
+        <h3 className="font-display mt-1 text-lg font-bold leading-snug tracking-tight text-stone-900">
+          <Link to={`/products/${product.id}`} className="transition-colors hover:text-[#EA580C]">{product.name}</Link>
+        </h3>
       </div>
 
       <div className="space-y-1.5 text-sm text-stone-600">
@@ -54,15 +57,13 @@ export const ProductCard = ({ product, index = 0, compact = false }) => (
           <Star size={14} className="text-teal-600" fill="currentColor" />
           {product.rating.toFixed(1)}
         </span>
-        <a
-          data-testid={`check-price-button-${product.id}`}
-          href={product.affiliate_url}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
+        <Link
+          data-testid={`view-product-button-${product.id}`}
+          to={`/products/${product.id}`}
           className="flex items-center gap-1.5 rounded-xl bg-[#EA580C] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-[#C2410C] hover:shadow-md active:scale-95"
         >
-          Check Price <ArrowUpRight size={15} />
-        </a>
+          View & Buy <ArrowRight size={15} />
+        </Link>
       </div>
       {!compact && (
         <p className="text-xs leading-relaxed text-stone-500">{product.key_benefit}</p>

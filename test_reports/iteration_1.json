@@ -1,0 +1,20 @@
+{
+  "summary": "Full backend + frontend testing for de-affiliation & on-site checkout revamp of Paws & Whiskers India. All 10 pytest backend tests pass (products list=10, no affiliate_url, variants present, product-checkout Stripe session creation with validation for invalid variant/unknown product/qty out of range, payment status kind=order, support flow still works). Frontend: home cards render with view-product-button-{id}, product-image-link-{id}; product page /products/farmina-nd-prime-cat has all required data-testids (product-page, product-name, product-rating, product-buy-box, variant-1.5-kg, variant-5-kg, qty-increase/decrease/value, product-total-price, buy-now-button, related-products); 5 kg × 2 total correctly = ₹ 13,800; /products/does-not-exist shows product-not-found; article /guides/best-cat-food-india-2026 has quick-answer-view-product, table-view-product-*, review-view-product-* internal links and NO affiliate-disclosure-banner; no 'amazon','flipkart','affiliate','commission' text present on Home or Article; buy-now-button redirects to checkout.stripe.com; completed a full Stripe TEST payment (4242…) and landed on /payment/success with data-testid order-success-message showing product name/variant/qty.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py getting large (~700 lines with seed data); consider moving PRODUCTS/GUIDES/CATEGORIES seed to a data module for readability.",
+    "GET /api/guides/{slug} returns 200 with {'error':'not found'} for missing slug instead of 404 (inconsistent with /api/products/{id}); not in scope for this task but worth aligning.",
+    "product_checkout uses tax_code txcd_99999999 (general) — fine, but hardcoded; consider category-level tax codes long term.",
+    "Stripe managed-payments fallback path is good; consider narrowing except clause and logging."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% of listed acceptance criteria"},
+  "test_credentials": "No auth. Stripe TEST card 4242 4242 4242 4242, 12/34, CVC 123. Verified successful order on session cs_test_a1oxEQIQGRp2dhx8yvqsSyZaBcdU5p6ZCIcLlYWyb7EV5czyRnyKJ7x2HY.",
+  "seed_data_creation": "None (backend startup upserts 10 products).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend regression tests live at /app/backend/tests/backend_test.py (pytest). Frontend Stripe checkout requires shipping name + manual address + phone number (US default country); paying via card 4242 lands on /payment/success and shows [data-testid=order-success-message]. lenis smooth-scroll can require force clicks."
+}

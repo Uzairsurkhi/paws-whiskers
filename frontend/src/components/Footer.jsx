@@ -16,7 +16,7 @@ export const Footer = () => (
             Honest, independent guides to food, toys, grooming and essentials for Indian dogs and cats. We buy every product we test.
           </p>
           <p className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs leading-relaxed text-orange-900">
-            We may earn a commission when you buy through our links, at no extra cost to you. Brands cannot pay for rankings.
+            Every product we recommend is sold right here, at honest ₹ prices. Brands cannot pay for rankings, labels or scores.
           </p>
         </div>
         <div>

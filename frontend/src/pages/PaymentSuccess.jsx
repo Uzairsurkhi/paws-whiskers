@@ -9,6 +9,7 @@ export default function PaymentSuccess() {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
   const [state, setState] = useState("polling");
+  const [order, setOrder] = useState(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -20,6 +21,7 @@ export default function PaymentSuccess() {
       try {
         const { data } = await axios.get(`${API}/payments/status/${sessionId}`);
         if (data.payment_status === "paid") {
+          setOrder(data);
           setState("paid");
           return;
         }
@@ -40,7 +42,19 @@ export default function PaymentSuccess() {
           <p className="mt-3 text-stone-500">Hold tight, we're checking with Stripe.</p>
         </>
       )}
-      {state === "paid" && (
+      {state === "paid" && order?.kind === "order" && (
+        <div data-testid="order-success-message">
+          <CheckCircle2 size={56} className="mx-auto text-teal-600" />
+          <h1 className="font-display mt-6 text-4xl font-black tracking-tight text-stone-900">Order confirmed!</h1>
+          <p className="mt-4 leading-relaxed text-stone-600">
+            <span className="font-bold text-stone-900">{order.product_name}</span> · {order.variant} × {order.quantity} is on its way to your pet. We'll email you tracking details shortly.
+          </p>
+          <Link to="/" data-testid="order-success-home-link" className="mt-8 inline-block rounded-full bg-[#EA580C] px-7 py-3.5 font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-95">
+            Keep browsing
+          </Link>
+        </div>
+      )}
+      {state === "paid" && order?.kind !== "order" && (
         <div data-testid="payment-success-message">
           <CheckCircle2 size={56} className="mx-auto text-teal-600" />
           <h1 className="font-display mt-6 text-4xl font-black tracking-tight text-stone-900">You're a gem. Thank you!</h1>

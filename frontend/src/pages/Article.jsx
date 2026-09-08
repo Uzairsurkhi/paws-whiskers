@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Star, Check, X, ChevronDown, Info, Clock, User, BadgeCheck, Droplets, Scale, Wallet, Utensils } from "lucide-react";
+import { ArrowRight, Star, Check, X, ChevronDown, Clock, User, BadgeCheck, Droplets, Scale, Wallet, Utensils } from "lucide-react";
 import { api } from "../lib/api";
 import { Reveal, MaskedLine, FadeIn } from "../components/Reveal";
 import { Newsletter } from "../components/Newsletter";
@@ -12,14 +12,7 @@ const LABEL_STYLES = {
   "Premium Pick": "bg-stone-900 text-amber-200 border-stone-900",
 };
 
-const Disclosure = () => (
-  <div data-testid="affiliate-disclosure-banner" className="flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 text-sm leading-relaxed text-orange-900">
-    <Info size={17} className="mt-0.5 shrink-0 text-[#EA580C]" />
-    <p>
-      <span className="font-bold">Affiliate disclosure:</span> We may earn a commission when you buy through our links, at no extra cost to you. Brands cannot pay for rankings — every product below was bought and tested by our team.
-    </p>
-  </div>
-);
+const fromPrice = (p) => `₹ ${Math.min(...p.variants.map((v) => v.price)).toLocaleString("en-IN")}`;
 
 const QuickAnswer = ({ top }) => {
   if (!top) return null;
@@ -43,15 +36,13 @@ const QuickAnswer = ({ top }) => {
               <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${LABEL_STYLES[top.label]}`}>{top.label}</span>
             </div>
           </div>
-          <a
-            data-testid="quick-answer-check-price"
-            href={top.affiliate_url}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
+          <Link
+            data-testid="quick-answer-view-product"
+            to={`/products/${top.id}`}
             className="flex shrink-0 items-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-3.5 font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-95"
           >
-            Check latest price <ArrowUpRight size={16} />
-          </a>
+            Buy from {fromPrice(top)} <ArrowRight size={16} />
+          </Link>
         </div>
       </div>
     </Reveal>
@@ -90,15 +81,13 @@ const ComparisonTable = ({ products }) => (
                 </span>
               </td>
               <td className="px-5 py-4">
-                <a
-                  data-testid={`table-check-price-${p.id}`}
-                  href={p.affiliate_url}
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
+                <Link
+                  data-testid={`table-view-product-${p.id}`}
+                  to={`/products/${p.id}`}
                   className="flex w-max items-center gap-1.5 rounded-xl bg-[#EA580C] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#C2410C]"
                 >
-                  Check price <ArrowUpRight size={13} />
-                </a>
+                  View & Buy <ArrowRight size={13} />
+                </Link>
               </td>
             </tr>
           ))}
@@ -165,15 +154,13 @@ const ReviewCard = ({ p, rank }) => (
               <p className="font-mono-accent text-lg font-bold text-stone-900">{p.price_range}</p>
               <p className="text-xs text-stone-500">{p.pack_sizes} · checked this week</p>
             </div>
-            <a
-              data-testid={`review-check-price-${p.id}`}
-              href={p.affiliate_url}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
+            <Link
+              data-testid={`review-view-product-${p.id}`}
+              to={`/products/${p.id}`}
               className="flex items-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-3 font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-95"
             >
-              Check latest price <ArrowUpRight size={16} />
-            </a>
+              Buy from {fromPrice(p)} <ArrowRight size={16} />
+            </Link>
           </div>
         </div>
       </div>
@@ -282,9 +269,6 @@ export default function Article() {
               <span className="font-mono-accent text-xs uppercase tracking-widest">Updated July 2026</span>
             </div>
           </FadeIn>
-          <FadeIn delay={0.6}>
-            <div className="mt-8"><Disclosure /></div>
-          </FadeIn>
         </div>
       </section>
 
@@ -368,9 +352,6 @@ export default function Article() {
         </section>
       )}
 
-      <section className="mx-auto max-w-4xl px-5 pt-14 sm:px-8">
-        <Disclosure />
-      </section>
       <Newsletter />
     </main>
   );

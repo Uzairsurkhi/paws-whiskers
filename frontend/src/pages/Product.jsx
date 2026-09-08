@@ -19,10 +19,11 @@ const inr = (n) => `₹ ${n.toLocaleString("en-IN")}`;
 const BuyBox = ({ product }) => {
   const { add } = useCart();
   const navigate = useNavigate();
-  const [variant, setVariant] = useState(product.variants.find((v) => v.in_stock !== false) || product.variants[0]);
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const [variant, setVariant] = useState(variants.find((v) => v.in_stock !== false) || variants[0] || null);
   const [qty, setQty] = useState(1);
-  const soldOut = variant.in_stock === false;
-  const allOut = product.variants.every((v) => v.in_stock === false);
+  const soldOut = !variant || variant.in_stock === false;
+  const allOut = variants.length === 0 || variants.every((v) => v.in_stock === false);
 
   const addToCart = () => {
     add(product, variant, qty);
@@ -32,6 +33,7 @@ const BuyBox = ({ product }) => {
   };
 
   const buyNow = () => {
+    if (!variant) return;
     add(product, variant, qty);
     navigate("/cart");
   };
@@ -40,7 +42,7 @@ const BuyBox = ({ product }) => {
     <div data-testid="product-buy-box" className="rounded-[2rem] border border-[#E7E2DA] bg-white p-6 shadow-[0_2px_20px_-8px_rgba(28,25,23,0.12)] sm:p-7">
       <p className="font-mono-accent text-[11px] font-bold uppercase tracking-[0.2em] text-stone-400">Pack size</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {product.variants.map((v) => (
+        {variants.map((v) => (
           <button
             key={v.label}
             data-testid={`variant-${v.label.replace(/\s+/g, "-").toLowerCase()}`}
@@ -55,8 +57,8 @@ const BuyBox = ({ product }) => {
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono-accent text-[11px] font-bold uppercase tracking-[0.2em] text-stone-400">Total</p>
-          <p data-testid="product-total-price" className="font-display mt-1 text-4xl font-black tracking-tight text-stone-900">{inr(variant.price * qty)}</p>
-          <p className="mt-1 text-xs text-stone-500">{soldOut ? <span className="font-bold text-red-600">This pack size is sold out</span> : "Incl. taxes calculated at checkout"}</p>
+          <p data-testid="product-total-price" className="font-display mt-1 text-4xl font-black tracking-tight text-stone-900">{variant ? inr(variant.price * qty) : "Unavailable"}</p>
+          <p className="mt-1 text-xs text-stone-500">{soldOut ? <span className="font-bold text-red-600">This product is currently unavailable</span> : "Incl. taxes calculated at checkout"}</p>
         </div>
         <div className="flex items-center rounded-full border border-stone-200 bg-[#FAF7F2]">
           <button data-testid="qty-decrease" onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-3 text-stone-600 transition-colors hover:text-[#EA580C]"><Minus size={15} /></button>
@@ -97,7 +99,7 @@ const ProsCons = ({ product }) => (
     <div className="rounded-3xl bg-teal-50/60 p-6 ring-1 ring-teal-100">
       <p className="font-mono-accent text-[11px] font-bold uppercase tracking-widest text-teal-700">What we loved</p>
       <ul className="mt-3 space-y-2.5">
-        {product.pros.map((pro) => (
+        {(product.pros || []).map((pro) => (
           <li key={pro} className="flex gap-2 text-sm text-stone-700"><Check size={15} className="mt-0.5 shrink-0 text-teal-600" />{pro}</li>
         ))}
       </ul>
@@ -105,7 +107,7 @@ const ProsCons = ({ product }) => (
     <div className="rounded-3xl bg-orange-50/60 p-6 ring-1 ring-orange-100">
       <p className="font-mono-accent text-[11px] font-bold uppercase tracking-widest text-orange-700">Worth knowing</p>
       <ul className="mt-3 space-y-2.5">
-        {product.cons.map((con) => (
+        {(product.cons || []).map((con) => (
           <li key={con} className="flex gap-2 text-sm text-stone-700"><X size={15} className="mt-0.5 shrink-0 text-orange-500" />{con}</li>
         ))}
       </ul>
@@ -125,7 +127,11 @@ export default function Product() {
     api.product(id)
       .then((p) => {
         setProduct(p);
-        return api.products({ category: p.category }).then((list) => setRelated(list.filter((x) => x.id !== p.id).slice(0, 3)));
+        // Recommendations are optional. A failed secondary request must not
+        // prevent the product the visitor selected from being displayed.
+        return api.products({ category: p.category })
+          .then((list) => setRelated(list.filter((x) => x.id !== p.id).slice(0, 3)))
+          .catch(() => setRelated([]));
       })
       .catch(() => setMissing(true));
   }, [id]);
@@ -184,20 +190,20 @@ export default function Product() {
               <h1 data-testid="product-name" className="font-display mt-4 text-4xl font-black leading-[1.05] tracking-tight text-stone-900 sm:text-5xl">{product.name}</h1>
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <span data-testid="product-rating" className="flex items-center gap-1.5 rounded-full bg-teal-50 px-3.5 py-1.5 text-sm font-bold text-teal-800 ring-1 ring-teal-200">
-                  <Star size={14} className="text-teal-600" fill="currentColor" /> {product.rating.toFixed(1)} / 5
+                  <Star size={14} className="text-teal-600" fill="currentColor" /> {Number(product.rating || 0).toFixed(1)} / 5
                 </span>
                 <span className="text-sm text-stone-600"><span className="font-semibold text-stone-800">Best for:</span> {product.best_for}</span>
               </div>
               <p className="mt-5 text-base leading-relaxed text-stone-600 sm:text-lg">{product.key_benefit}. {product.ideal_pet}</p>
             </FadeIn>
 
-            <FadeIn delay={0.2}><BuyBox product={product} /></FadeIn>
+            <FadeIn delay={0.2}><BuyBox key={product.id} product={product} /></FadeIn>
 
             <Reveal><ProsCons product={product} /></Reveal>
 
             <Reveal>
               <div className="space-y-4 text-sm leading-relaxed text-stone-600">
-                {product.ingredients.length > 0 && (
+                {(product.ingredients || []).length > 0 && (
                   <div className="rounded-3xl border border-[#E7E2DA] bg-white p-6">
                     <p className="font-mono-accent text-[11px] font-bold uppercase tracking-widest text-stone-400">First 5 ingredients</p>
                     <ol className="mt-3 grid gap-2 sm:grid-cols-2">

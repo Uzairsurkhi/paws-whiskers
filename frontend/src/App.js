@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { SearchModal } from "@/components/SearchModal";
 import Home from "@/pages/Home";
 import Article from "@/pages/Article";
+import PaymentSuccess, { PaymentCancel } from "@/pages/PaymentSuccess";
 
 const ScrollManager = () => {
   const { pathname } = useLocation();
@@ -61,6 +62,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home onSearch={() => setSearchOpen(true)} />} />
           <Route path="/guides/best-cat-food-india-2026" element={<Article />} />
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/payment/cancel" element={<PaymentCancel />} />
         </Routes>
         <Footer />
         <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

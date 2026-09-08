@@ -42,6 +42,7 @@ export const Header = ({ onSearch }) => {
           <button data-testid="nav-reviews-link" onClick={() => goAnchor("#top-picks")} className={navLink}>Reviews</button>
           <Link data-testid="nav-cat-food-article-link" to="/guides/best-cat-food-india-2026" className={navLink}>Guides</Link>
           <button data-testid="nav-deals-link" onClick={() => goAnchor("#top-picks")} className={navLink}>Deals</button>
+          <button data-testid="nav-support-link" onClick={() => goAnchor("#support")} className="rounded-full bg-[#EA580C] px-4 py-1.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#C2410C] active:scale-95">Support us</button>
         </nav>
 
         <div className="flex items-center gap-2">

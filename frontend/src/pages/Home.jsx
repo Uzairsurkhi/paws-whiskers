@@ -8,6 +8,7 @@ import { Reveal, MaskedLine, FadeIn } from "../components/Reveal";
 import { Marquee } from "../components/Marquee";
 import { ProductCard } from "../components/ProductCard";
 import { Newsletter } from "../components/Newsletter";
+import { SupportSection } from "../components/SupportSection";
 
 const IMGS = {
   golden: "https://images.unsplash.com/photo-1783441286747-85286dd35aac?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200",
@@ -368,6 +369,7 @@ export default function Home({ onSearch }) {
       <TopPicks products={filtered} pet={pet} setPet={setPet} category={category} />
       <FeaturedGuides guides={guides} />
       <WhyTrust />
+      <SupportSection />
       <LatestGuides guides={guides} />
       <Newsletter />
     </main>

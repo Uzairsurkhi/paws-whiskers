@@ -17,23 +17,26 @@ Article page "Best Cat Food in India (2026)": quick answer, comparison table nea
 - First-time kitten/puppy owner looking for feeding guidance.
 - Affiliate content editor (future) who will manage products/guides.
 
-## Implemented (2026-07-08)
-- Award-style homepage: masked line-by-line hero reveal, parallax floating pet photo cards, editorial marquee, shop-by-pet split cards, category pills, filterable top-picks grid (All/Dogs/Cats + category), featured guides bento, why-trust-us strip, latest guides, newsletter (saves emails to MongoDB), footer with disclosure.
+## Implemented (2026-07-08, update: Stripe payments)
+- Award-style homepage: masked line-by-line hero reveal, parallax floating pet photo cards, editorial marquee, shop-by-pet split cards, category pills, filterable top-picks grid (All/Dogs/Cats + category), featured guides bento, why-trust-us strip, "Support us" reader-contribution section (Stripe), latest guides, newsletter (saves emails to MongoDB), footer with disclosure.
 - Article page "Best Cat Food in India (2026)": quick answer box (Farmina N&D top pick), affiliate disclosure ribbon, full comparison table (6 cat foods), detailed review cards with pros/cons/ingredients/India tips, numbered buying-guide chapters, FAQ accordion, related guides.
 - Live search modal (⌘K or /) across products and guides.
 - Real Amazon.in search links on every Check Price button. Vet-review badge deliberately omitted (no real vet yet).
+- Stripe payments (Emergent-managed claimable sandbox, TEST mode, US account — IN unsupported by Stripe): one-time reader-support tiers ₹99/₹299/₹499 in INR via hosted Checkout; backend routes /api/payments/tiers, /api/payments/checkout, /api/payments/status/{session_id} (with Stripe-poll fallback), /api/stripe/webhook (idempotent); payment_transactions collection in MongoDB; success/cancel pages with status polling. Tax mode: full (Stripe managed payments). Verified e2e with test card 4242 4242 4242 4242 → ₹322.55 paid (₹299 + 7.875% tax).
+- setup_stripe.py: idempotent catalog sync (product + prices by lookup_key, tax settings).
 
 ## Backlog (prioritized)
 - P0: Admin CMS to edit products/guides (user asked for DB content + simple admin later).
 - P0: Individual article pages for the other 5 guides (currently "Coming soon" toasts).
 - P1: Real affiliate tags on Amazon/Flipkart links (needs user's affiliate IDs).
+- P1: User to claim the Stripe sandbox (onboarding_url) + complete KYC before deploy; platform auto-switches to live keys on approval.
 - P1: Advanced filters (kitten/puppy/adult, budget slider, food type, breed size).
 - P1: Monthly pet-food budget calculator in ₹.
 - P2: Vet-review badge system once a real veterinarian reviews content.
-- P2: Deals page with price-drop tracking; email sending via Resend for the newsletter.
+- P2: Deals page with price-drop tracking; email sending via Resend for the newsletter; paid premium guides on top of the Stripe rails.
 
 ## Next tasks
 1. Build admin CMS (auth + product/guide CRUD).
 2. Publish remaining guide articles.
-3. Wire real affiliate IDs.
+3. Claim Stripe sandbox + KYC, then deploy.
 4. Add budget/life-stage filters.

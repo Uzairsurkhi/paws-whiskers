@@ -9,6 +9,10 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime, timezone
 
 ROOT_DIR = Path(__file__).parent
+import stripe
+from fastapi import Request, HTTPException
+from typing import Optional
+from pydantic import Field
 load_dotenv(ROOT_DIR / '.env')
 
 mongo_url = os.environ['MONGO_URL']
@@ -485,6 +489,134 @@ async def newsletter_signup(input: NewsletterSignup):
     if not existing:
         await db.newsletter.insert_one({"email": input.email, "created_at": datetime.now(timezone.utc).isoformat()})
     return {"ok": True, "message": "You're on the list! One thoughtful email a week."}
+
+
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or "sk_test_emergent"
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+TAX_MODE = "full"
+
+SUPPORT_TIERS = [
+    {"lookup_key": "support_chai", "title": "Buy us a chai", "blurb": "Covers a week of treats for our test-panel pups and cats."},
+    {"lookup_key": "support_treats", "title": "Fund a comparison", "blurb": "Helps us buy one more product to test side by side."},
+    {"lookup_key": "support_month", "title": "Keep prices fresh", "blurb": "Funds a week of price re-checks across Indian stores."},
+]
+
+
+class CheckoutRequest(BaseModel):
+    lookup_key: str
+    quantity: int = Field(1, ge=1, le=100)
+    origin_url: str
+
+
+@api_router.get("/payments/tiers")
+async def get_tiers():
+    out = []
+    for tier in SUPPORT_TIERS:
+        prices = stripe.Price.list(lookup_keys=[tier["lookup_key"]], active=True, limit=1).data
+        if not prices:
+            continue
+        p = prices[0]
+        amount = (p.unit_amount or 0) / 100
+        symbol = "₹" if p.currency == "inr" else "$"
+        label = f"{symbol}{int(amount)}" if amount == int(amount) else f"{symbol}{amount:.2f}"
+        out.append({**tier, "amount_label": label, "currency": p.currency})
+    return out
+
+
+@api_router.post("/payments/checkout")
+async def create_checkout(req: CheckoutRequest):
+    prices = stripe.Price.list(lookup_keys=[req.lookup_key], active=True, limit=1).data
+    if not prices:
+        raise HTTPException(500, f"Price not found: {req.lookup_key}")
+    price = prices[0]
+    kwargs = dict(
+        line_items=[{"price": price.id, "quantity": req.quantity}],
+        mode="payment",
+        success_url=f"{req.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{req.origin_url}/payment/cancel",
+        metadata={"lookup_key": req.lookup_key},
+    )
+    if TAX_MODE == "full":
+        try:
+            session = stripe.checkout.Session.create(**kwargs, managed_payments={"enabled": True})
+        except stripe.error.InvalidRequestError as e:
+            msg = (e.user_message or "").lower()
+            if "managed payments" in msg or "ineligible" in msg:
+                session = stripe.checkout.Session.create(
+                    **kwargs, automatic_tax={"enabled": True}, billing_address_collection="required"
+                )
+            else:
+                raise
+    elif TAX_MODE == "calc_only":
+        session = stripe.checkout.Session.create(
+            **kwargs, automatic_tax={"enabled": True}, billing_address_collection="required"
+        )
+    else:
+        session = stripe.checkout.Session.create(**kwargs)
+    now = datetime.now(timezone.utc).isoformat()
+    await db.payment_transactions.insert_one({
+        "session_id": session.id,
+        "lookup_key": req.lookup_key,
+        "amount": (price.unit_amount or 0) * req.quantity,
+        "currency": price.currency,
+        "status": "initiated",
+        "payment_status": "pending",
+        "created_at": now,
+        "updated_at": now,
+    })
+    return {"checkout_url": session.url, "session_id": session.id}
+
+
+@api_router.get("/payments/status/{session_id}")
+async def get_payment_status(session_id: str):
+    record = await db.payment_transactions.find_one({"session_id": session_id})
+    if not record:
+        raise HTTPException(404, "Transaction not found")
+    if record.get("payment_status") != "paid":
+        try:
+            s = stripe.checkout.Session.retrieve(session_id)
+            if s.payment_status == "paid" or s.status == "complete":
+                now = datetime.now(timezone.utc).isoformat()
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+                    {"$set": {"status": "completed", "payment_status": "paid",
+                              "stripe_payment_intent_id": s.payment_intent, "updated_at": now}},
+                )
+                record = await db.payment_transactions.find_one({"session_id": session_id})
+        except stripe.error.StripeError:
+            pass
+    return {"session_id": record["session_id"], "status": record["status"], "payment_status": record["payment_status"]}
+
+
+@api_router.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(400, "Invalid signature")
+    obj, t = event["data"]["object"], event["type"]
+    now = datetime.now(timezone.utc).isoformat()
+    if t == "checkout.session.completed":
+        await db.payment_transactions.update_one(
+            {"session_id": obj["id"], "payment_status": {"$ne": "paid"}},
+            {"$set": {"status": "completed", "payment_status": obj.get("payment_status", "paid"),
+                      "stripe_payment_intent_id": obj.get("payment_intent"), "updated_at": now}},
+        )
+    elif t == "checkout.session.async_payment_succeeded":
+        await db.payment_transactions.update_one({"session_id": obj["id"]},
+            {"$set": {"payment_status": "paid", "updated_at": now}})
+    elif t == "checkout.session.async_payment_failed":
+        await db.payment_transactions.update_one({"session_id": obj["id"]},
+            {"$set": {"status": "failed", "payment_status": "failed", "updated_at": now}})
+    elif t == "checkout.session.expired":
+        await db.payment_transactions.update_one({"session_id": obj["id"]},
+            {"$set": {"status": "expired", "payment_status": "expired", "updated_at": now}})
+    elif t == "charge.refunded":
+        await db.payment_transactions.update_one({"stripe_payment_intent_id": obj.get("payment_intent")},
+            {"$set": {"status": "refunded", "payment_status": "refunded", "updated_at": now}})
+    return {"status": "ok"}
 
 
 app.include_router(api_router)

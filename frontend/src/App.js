@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Lenis from "lenis";
 import { Toaster } from "sonner";
 import { Header } from "@/components/Header";
@@ -9,7 +9,21 @@ import { SearchModal } from "@/components/SearchModal";
 import Home from "@/pages/Home";
 import Article from "@/pages/Article";
 import Product from "@/pages/Product";
+import Login from "@/pages/Login";
+import Cart from "@/pages/Cart";
+import Orders from "@/pages/Orders";
+import Admin from "@/pages/admin/Admin";
+import AdminLogin from "@/pages/admin/AdminLogin";
 import PaymentSuccess, { PaymentCancel } from "@/pages/PaymentSuccess";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
+
+const RequireAuth = ({ children }) => {
+  const { user, ready } = useAuth();
+  const { pathname } = useLocation();
+  if (!ready) return null;
+  return user ? children : <Navigate to={`/login?next=${encodeURIComponent(pathname)}`} replace />;
+};
 
 const ScrollManager = () => {
   const { pathname } = useLocation();
@@ -56,6 +70,8 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AuthProvider>
+      <CartProvider>
       <div className="min-h-screen bg-[#FAF7F2]">
         <div className="grain-overlay" />
         <ScrollManager />
@@ -64,6 +80,11 @@ function App() {
           <Route path="/" element={<Home onSearch={() => setSearchOpen(true)} />} />
           <Route path="/guides/best-cat-food-india-2026" element={<Article />} />
           <Route path="/products/:id" element={<Product />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/orders" element={<RequireAuth><Orders /></RequireAuth>} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
         </Routes>
@@ -71,6 +92,8 @@ function App() {
         <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
         <Toaster position="bottom-center" richColors />
       </div>
+      </CartProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

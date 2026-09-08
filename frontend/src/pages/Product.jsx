@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Star, Check, X, ChevronLeft, ShoppingBag, Loader2, Truck, ShieldCheck, Minus, Plus, Dog, Cat } from "lucide-react";
+import { Star, Check, X, ChevronLeft, ShoppingBag, Loader2, Truck, ShieldCheck, Minus, Plus, Dog, Cat, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
+import { useCart } from "../context/CartContext";
 import { Reveal, FadeIn } from "../components/Reveal";
 import { ProductCard } from "../components/ProductCard";
 
@@ -16,24 +17,23 @@ const LABEL_STYLES = {
 const inr = (n) => `₹ ${n.toLocaleString("en-IN")}`;
 
 const BuyBox = ({ product }) => {
-  const [variant, setVariant] = useState(product.variants[0]);
+  const { add } = useCart();
+  const navigate = useNavigate();
+  const [variant, setVariant] = useState(product.variants.find((v) => v.in_stock !== false) || product.variants[0]);
   const [qty, setQty] = useState(1);
-  const [busy, setBusy] = useState(false);
+  const soldOut = variant.in_stock === false;
+  const allOut = product.variants.every((v) => v.in_stock === false);
 
-  const buy = async () => {
-    setBusy(true);
-    try {
-      const data = await api.productCheckout({
-        product_id: product.id,
-        variant: variant.label,
-        quantity: qty,
-        origin_url: window.location.origin,
-      });
-      window.location.href = data.checkout_url;
-    } catch {
-      toast.error("Couldn't start checkout — please try again.");
-      setBusy(false);
-    }
+  const addToCart = () => {
+    add(product, variant, qty);
+    toast.success(`${product.name} (${variant.label}) added to cart`, {
+      action: { label: "View cart", onClick: () => navigate("/cart") },
+    });
+  };
+
+  const buyNow = () => {
+    add(product, variant, qty);
+    navigate("/cart");
   };
 
   return (
@@ -45,7 +45,7 @@ const BuyBox = ({ product }) => {
             key={v.label}
             data-testid={`variant-${v.label.replace(/\s+/g, "-").toLowerCase()}`}
             onClick={() => setVariant(v)}
-            className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${variant.label === v.label ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-orange-300 hover:text-[#EA580C]"}`}
+            className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${variant.label === v.label ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-orange-300 hover:text-[#EA580C]"} ${v.in_stock === false ? "line-through opacity-60" : ""}`}
           >
             {v.label} · {inr(v.price)}
           </button>
@@ -56,7 +56,7 @@ const BuyBox = ({ product }) => {
         <div>
           <p className="font-mono-accent text-[11px] font-bold uppercase tracking-[0.2em] text-stone-400">Total</p>
           <p data-testid="product-total-price" className="font-display mt-1 text-4xl font-black tracking-tight text-stone-900">{inr(variant.price * qty)}</p>
-          <p className="mt-1 text-xs text-stone-500">Incl. taxes calculated at checkout</p>
+          <p className="mt-1 text-xs text-stone-500">{soldOut ? <span className="font-bold text-red-600">This pack size is sold out</span> : "Incl. taxes calculated at checkout"}</p>
         </div>
         <div className="flex items-center rounded-full border border-stone-200 bg-[#FAF7F2]">
           <button data-testid="qty-decrease" onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-3 text-stone-600 transition-colors hover:text-[#EA580C]"><Minus size={15} /></button>
@@ -65,15 +65,24 @@ const BuyBox = ({ product }) => {
         </div>
       </div>
 
-      <button
-        data-testid="buy-now-button"
-        onClick={buy}
-        disabled={busy}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-[0.98] disabled:opacity-60"
-      >
-        {busy ? <Loader2 size={18} className="animate-spin" /> : <ShoppingBag size={18} />}
-        {busy ? "Opening secure checkout…" : "Buy now"}
-      </button>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <button
+          data-testid="add-to-cart-button"
+          onClick={addToCart}
+          disabled={soldOut}
+          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-stone-900 bg-white px-6 py-4 text-base font-bold text-stone-900 transition-all hover:bg-stone-900 hover:text-white active:scale-[0.98] disabled:opacity-40"
+        >
+          <ShoppingBag size={18} /> Add to cart
+        </button>
+        <button
+          data-testid="buy-now-button"
+          onClick={buyNow}
+          disabled={soldOut}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-[0.98] disabled:opacity-40"
+        >
+          {allOut ? "Sold out" : "Buy now"} {!allOut && <ArrowRight size={18} />}
+        </button>
+      </div>
 
       <div className="mt-5 grid gap-2 text-xs text-stone-500 sm:grid-cols-2">
         <span className="flex items-center gap-2"><Truck size={14} className="text-teal-600" /> Ships across India in 3–5 days</span>

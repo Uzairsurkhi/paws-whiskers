@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PawPrint, Search, Menu, X } from "lucide-react";
+import { HeaderActions } from "./HeaderActions";
 
 export const Header = ({ onSearch }) => {
   const [open, setOpen] = useState(false);
@@ -36,7 +37,7 @@ export const Header = ({ onSearch }) => {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-7 lg:flex">
+        <nav className="hidden items-center gap-6 lg:flex">
           <button data-testid="nav-dogs-link" onClick={() => goPet("dog")} className={navLink}>Dogs</button>
           <button data-testid="nav-cats-link" onClick={() => goPet("cat")} className={navLink}>Cats</button>
           <button data-testid="nav-reviews-link" onClick={() => goAnchor("#top-picks")} className={navLink}>Reviews</button>
@@ -52,9 +53,10 @@ export const Header = ({ onSearch }) => {
             className="flex items-center gap-2.5 rounded-full border border-stone-200 bg-white/70 px-4 py-2 text-sm text-stone-400 shadow-sm transition-colors hover:border-orange-300 hover:text-stone-600"
           >
             <Search size={15} />
-            <span className="hidden sm:inline">Search picks &amp; guides</span>
-            <kbd className="font-mono-accent hidden rounded-md border border-stone-200 bg-stone-50 px-1.5 py-0.5 text-[10px] font-bold text-stone-500 md:inline">/</kbd>
+            <span className="hidden xl:inline">Search picks &amp; guides</span>
+            <kbd className="font-mono-accent hidden rounded-md border border-stone-200 bg-stone-50 px-1.5 py-0.5 text-[10px] font-bold text-stone-500 xl:inline">/</kbd>
           </button>
+          <HeaderActions />
           <button data-testid="mobile-menu-button" onClick={() => setOpen(!open)} className="rounded-full p-2 text-stone-700 lg:hidden">
             {open ? <X size={22} /> : <Menu size={22} />}
           </button>

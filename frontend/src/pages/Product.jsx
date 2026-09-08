@@ -47,7 +47,7 @@ const BuyBox = ({ product }) => {
             key={v.label}
             data-testid={`variant-${v.label.replace(/\s+/g, "-").toLowerCase()}`}
             onClick={() => setVariant(v)}
-            className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${variant.label === v.label ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-orange-300 hover:text-[#EA580C]"} ${v.in_stock === false ? "line-through opacity-60" : ""}`}
+            className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${variant?.label === v.label ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-orange-300 hover:text-[#EA580C]"} ${v.in_stock === false ? "line-through opacity-60" : ""}`}
           >
             {v.label} · {inr(v.price)}
           </button>

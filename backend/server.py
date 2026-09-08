@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 import stripe
 from fastapi import FastAPI, APIRouter, Request, HTTPException
@@ -10,6 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 from database import client, db
 from stripe_client import create_checkout_session
 from auth import router as auth_router, seed_admin
+from sms import sms_enabled, sms_provider
 from shop import router as shop_router, mark_order_paid, order_by_session, sync_stripe_payment
 
 app = FastAPI()
@@ -422,7 +426,7 @@ async def get_categories():
 
 
 @api_router.get("/products")
-async def get_products(pet: str | None = None, category: str | None = None, featured: bool | None = None):
+async def get_products(pet: Optional[str] = None, category: Optional[str] = None, featured: Optional[bool] = None):
     query = {}
     if pet:
         query["pet"] = pet
@@ -442,7 +446,7 @@ async def get_product(product_id: str):
 
 
 @api_router.get("/guides")
-async def get_guides(featured: bool | None = None, pet: str | None = None):
+async def get_guides(featured: Optional[bool] = None, pet: Optional[str] = None):
     query = {}
     if featured is not None:
         query["featured"] = featured
@@ -536,7 +540,7 @@ async def create_checkout(req: CheckoutRequest):
     return {"checkout_url": session.url, "session_id": session.id}
 
 
-async def _settle(session_id: str, payment_intent: str | None):
+async def _settle(session_id: str, payment_intent: Optional[str]):
     now = datetime.now(timezone.utc).isoformat()
     await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
@@ -625,6 +629,10 @@ async def seed_database():
     if await db.categories.count_documents({}) == 0:
         await db.categories.insert_many([{**c} for c in CATEGORIES])
         logger.info("Seeded %d categories", len(CATEGORIES))
+    if sms_enabled():
+        logger.info("Login OTP will be sent by SMS via %s", sms_provider())
+    else:
+        logger.warning("No SMS provider configured — login OTP will only show in local dev mode")
     await db.otps.create_index("phone")
     await db.users.create_index("id", unique=True)
     await db.orders.create_index("session_id")

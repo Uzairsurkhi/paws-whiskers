@@ -74,6 +74,27 @@ export default function Cart() {
     }
   };
 
+  const payUpi = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      navigate("/login?next=/cart");
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = await api.cartCheckoutUpi({
+        items: items.map(({ product_id, variant, quantity }) => ({ product_id, variant, quantity })),
+        shipping: ship,
+        origin_url: window.location.origin,
+      });
+      // Navigate to UPI payment page instead of direct link
+      navigate(`/payment/upi/${data.order_id}`, { state: { upiLink: data.upi_link, amount: data.amount } });
+    } catch (err) {
+      toast.error(errMsg(err));
+      setBusy(false);
+    }
+  };
+
   if (items.length === 0) {
     return (
       <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-5 py-24 text-center">
@@ -138,11 +159,23 @@ export default function Cart() {
               <span data-testid="cart-subtotal" className="font-display text-4xl font-black tracking-tight text-stone-900">{inr(subtotal)}</span>
             </div>
             <p className="mt-1 text-right text-xs text-stone-400">Taxes calculated at checkout</p>
-            <button data-testid="cart-pay-button" type="submit" disabled={busy || !ready} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-[0.98] disabled:opacity-60">
+            <button data-testid="cart-pay-upi-button" type="button" onClick={payUpi} disabled={busy || !ready} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-[0.98] disabled:opacity-60">
               {busy ? <Loader2 size={18} className="animate-spin" /> : user ? <Lock size={18} /> : <ArrowRight size={18} />}
-              {busy ? "Opening secure checkout…" : user ? `Pay ${inr(subtotal)}` : "Log in to pay"}
+              {busy ? "Opening UPI app…" : user ? `Pay ${inr(subtotal)} via UPI` : "Log in to pay"}
             </button>
-            <p className="mt-4 text-center text-xs text-stone-400">Secure checkout by Stripe · Test mode — card 4242 4242 4242 4242</p>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-stone-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-4 text-stone-400 uppercase tracking-wider">or</span>
+              </div>
+            </div>
+            <button data-testid="cart-pay-button" type="submit" disabled={busy || !ready} className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-stone-200 bg-white px-6 py-4 text-base font-bold text-stone-900 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 active:scale-[0.98] disabled:opacity-60">
+              {busy ? <Loader2 size={18} className="animate-spin" /> : <Lock size={18} />}
+              {busy ? "Opening checkout…" : user ? `Pay with Card` : "Log in to pay"}
+            </button>
+            <p className="mt-4 text-center text-xs text-stone-400">UPI: PhonePe, GPay, Paytm • Card: Secure by Stripe</p>
           </div>
         </aside>
       </form>

@@ -18,6 +18,7 @@ export default function Login() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [devOtp, setDevOtp] = useState(null);
+  const [challenge, setChallenge] = useState("");
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef(null);
@@ -38,6 +39,7 @@ export default function Login() {
     try {
       const r = await api.requestOtp(phone);
       setPhone(r.phone);
+      setChallenge(r.challenge || "");
       setDevOtp(r.dev_mode ? r.dev_otp : null);
       setStep("code");
       setCooldown(30);
@@ -54,7 +56,7 @@ export default function Login() {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await api.verifyOtp(phone, code);
+      const r = await api.verifyOtp(phone, code, challenge);
       login(r);
       toast.success("You're in!");
       navigate(next, { replace: true });

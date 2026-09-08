@@ -21,12 +21,14 @@ export const api = {
   newsletter: (email) => data(http.post("/newsletter", { email })),
 
   requestOtp: (phone) => data(http.post("/auth/request-otp", { phone })),
-  verifyOtp: (phone, code) => data(http.post("/auth/verify-otp", { phone, code })),
+  verifyOtp: (phone, code, challenge) => data(http.post("/auth/verify-otp", { phone, code, challenge })),
   adminLogin: (email, password) => data(http.post("/auth/admin-login", { email, password })),
   me: () => data(http.get("/auth/me")),
   updateMe: (body) => data(http.patch("/auth/me", body)),
 
   cartCheckout: (body) => data(http.post("/orders/checkout", body)),
+  cartCheckoutUpi: (body) => data(http.post("/orders/checkout-upi", body)),
+  verifyUpiPayment: (orderId, upiTxnId) => data(http.post(`/orders/${orderId}/verify-upi`, { upi_txn_id: upiTxnId })),
   myOrders: () => data(http.get("/orders")),
   paymentStatus: (sessionId) => data(http.get(`/payments/status/${sessionId}`)),
 

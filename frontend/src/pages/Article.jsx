@@ -12,7 +12,11 @@ const LABEL_STYLES = {
   "Premium Pick": "bg-stone-900 text-amber-200 border-stone-900",
 };
 
-const fromPrice = (p) => `₹ ${Math.min(...p.variants.map((v) => v.price)).toLocaleString("en-IN")}`;
+const fromPrice = (p) => {
+  const prices = (p.variants || []).map((v) => v.price).filter((n) => typeof n === "number");
+  if (!prices.length) return p.price_range || "";
+  return `₹ ${Math.min(...prices).toLocaleString("en-IN")}`;
+};
 
 const QuickAnswer = ({ top }) => {
   if (!top) return null;
@@ -31,7 +35,7 @@ const QuickAnswer = ({ top }) => {
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-800 ring-1 ring-teal-200">
-                <Star size={14} className="text-teal-600" fill="currentColor" /> {top.rating.toFixed(1)} / 5
+                <Star size={14} className="text-teal-600" fill="currentColor" /> {Number(top.rating || 0).toFixed(1)} / 5
               </span>
               <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${LABEL_STYLES[top.label]}`}>{top.label}</span>
             </div>

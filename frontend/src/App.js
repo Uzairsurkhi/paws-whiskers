@@ -15,6 +15,7 @@ import Orders from "@/pages/Orders";
 import Admin from "@/pages/admin/Admin";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import PaymentSuccess, { PaymentCancel } from "@/pages/PaymentSuccess";
+import UpiPayment from "@/pages/UpiPayment";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 
@@ -87,6 +88,7 @@ function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
+          <Route path="/payment/upi/:orderId" element={<RequireAuth><UpiPayment /></RequireAuth>} />
         </Routes>
         <Footer />
         <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

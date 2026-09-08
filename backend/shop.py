@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import uuid4
 
 import stripe
@@ -10,6 +13,7 @@ from auth import get_current_user, require_admin
 from database import db
 from mailer import send_order_confirmation
 from stripe_client import create_checkout_session
+from upi_payment import generate_upi_link
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -48,15 +52,19 @@ class VariantIn(BaseModel):
 
 class ProductUpdate(BaseModel):
     variants: list[VariantIn] = Field(min_length=1, max_length=8)
-    label: str | None = None
-    best_for: str | None = None
-    key_benefit: str | None = None
-    featured: bool | None = None
-    rating: float | None = Field(None, ge=0, le=5)
+    label: Optional[str] = None
+    best_for: Optional[str] = None
+    key_benefit: Optional[str] = None
+    featured: Optional[bool] = None
+    rating: Optional[float] = Field(None, ge=0, le=5)
 
 
 class FulfillmentUpdate(BaseModel):
     fulfillment_status: str
+
+
+class UpiVerification(BaseModel):
+    upi_txn_id: str = Field(min_length=8, max_length=50)
 
 
 def _now():
@@ -122,6 +130,87 @@ async def cart_checkout(req: CartCheckout, user: dict = Depends(get_current_user
     if not user.get("email"):
         await db.users.update_one({"id": user["id"]}, {"$set": {"email": req.shipping.email, "name": user.get("name") or req.shipping.name}})
     return {"checkout_url": session.url, "session_id": session.id, "order_id": order_id}
+
+
+@router.post("/orders/checkout-upi")
+async def cart_checkout_upi(req: CartCheckout, user: dict = Depends(get_current_user)):
+    """Checkout with UPI payment"""
+    items = []
+    for it in req.items:
+        product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
+        if not product:
+            raise HTTPException(404, f"Product not found: {it.product_id}")
+        variant = next((v for v in product["variants"] if v["label"] == it.variant), None)
+        if not variant:
+            raise HTTPException(400, f"Unknown pack size for {product['name']}")
+        if not variant.get("in_stock", True):
+            raise HTTPException(409, f"{product['name']} ({variant['label']}) is out of stock")
+        unit = variant["price"]
+        items.append({
+            "product_id": product["id"], "name": product["name"], "brand": product["brand"],
+            "image": product["image"], "variant": variant["label"], "unit_price": unit, "quantity": it.quantity,
+        })
+
+    order_id = str(uuid4())
+    subtotal = sum(i["unit_price"] * i["quantity"] for i in items)
+    amount_inr = subtotal / 100  # Convert from paisa to rupees
+
+    # Generate UPI payment link
+    upi_link = generate_upi_link(amount_inr, order_id)
+
+    now = _now()
+    await db.orders.insert_one({
+        "id": order_id, "user_id": user["id"], "user_phone": user.get("phone"),
+        "items": items, "subtotal": subtotal, "currency": "inr",
+        "shipping": req.shipping.model_dump(),
+        "status": "pending", "payment_status": "pending", "fulfillment_status": "new",
+        "payment_method": "upi", "upi_link": upi_link,
+        "session_id": order_id, "origin_url": req.origin_url, "email_sent": False,
+        "created_at": now, "updated_at": now,
+    })
+    await db.payment_transactions.insert_one({
+        "session_id": order_id, "kind": "order", "order_id": order_id, "user_id": user["id"],
+        "amount": subtotal, "currency": "inr", "payment_method": "upi",
+        "status": "initiated", "payment_status": "pending",
+        "created_at": now, "updated_at": now,
+    })
+    if not user.get("email"):
+        await db.users.update_one({"id": user["id"]}, {"$set": {"email": req.shipping.email, "name": user.get("name") or req.shipping.name}})
+
+    return {"upi_link": upi_link, "order_id": order_id, "amount": amount_inr}
+
+
+@router.post("/orders/{order_id}/verify-upi")
+async def verify_upi_payment(order_id: str, req: UpiVerification, user: dict = Depends(get_current_user)):
+    """User submits UPI transaction ID after payment"""
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if order["payment_status"] == "paid":
+        raise HTTPException(400, "Order already paid")
+
+    now = _now()
+    # Mark as pending verification (manual check required)
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {
+            "upi_txn_id": req.upi_txn_id,
+            "status": "pending_verification",
+            "payment_status": "pending_verification",
+            "updated_at": now
+        }}
+    )
+    await db.payment_transactions.update_one(
+        {"order_id": order_id},
+        {"$set": {
+            "upi_txn_id": req.upi_txn_id,
+            "status": "pending_verification",
+            "payment_status": "pending_verification",
+            "updated_at": now
+        }}
+    )
+
+    return {"status": "pending_verification", "message": "Payment verification pending. You'll be notified once confirmed."}
 
 
 async def mark_order_paid(session_id: str, payment_intent: str | None = None):

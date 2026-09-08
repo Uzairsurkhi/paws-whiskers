@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import os
 import re
+import hmac
+import hashlib
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from uuid import uuid4
 
 import bcrypt
@@ -12,20 +17,15 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
 
 from database import db
+from sms import OTP_TTL_MIN, is_production, send_otp_sms, sms_enabled, sms_provider
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth")
 
-JWT_SECRET = os.environ["JWT_SECRET"]
+JWT_SECRET = os.environ.get("JWT_SECRET") or "paws-whiskers-dev-change-me"
 JWT_TTL_DAYS = 30
-OTP_TTL_MIN = 5
 OTP_MAX_PER_10MIN = 5
 ADMIN_PHONES = {p.strip() for p in os.environ.get("ADMIN_PHONES", "").split(",") if p.strip()}
-
-TWILIO_SID = os.environ.get("TWILIO_ACCOUNT_SID")
-TWILIO_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
-TWILIO_FROM = os.environ.get("TWILIO_FROM_NUMBER")
-SMS_ENABLED = bool(TWILIO_SID and TWILIO_TOKEN and TWILIO_FROM)
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -37,6 +37,7 @@ class PhoneRequest(BaseModel):
 class VerifyRequest(BaseModel):
     phone: str
     code: str
+    challenge: Optional[str] = None
 
 
 class AdminLogin(BaseModel):
@@ -45,8 +46,8 @@ class AdminLogin(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    name: str | None = None
-    email: EmailStr | None = None
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 def normalize_phone(raw: str) -> str:
@@ -81,13 +82,36 @@ def public_user(user: dict) -> dict:
     return {k: user.get(k) for k in ("id", "phone", "name", "email", "role", "created_at")}
 
 
-def send_sms(to: str, body: str):
-    from twilio.rest import Client
-
-    Client(TWILIO_SID, TWILIO_TOKEN).messages.create(to=to, from_=TWILIO_FROM, body=body)
+def _otp_digest(phone: str, code: str) -> str:
+    return hmac.new(JWT_SECRET.encode(), f"{phone}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
-async def get_current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict:
+def make_challenge(phone: str, code: str) -> str:
+    return jwt.encode(
+        {
+            "ph": phone,
+            "ch": _otp_digest(phone, code),
+            "jti": str(uuid4()),
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MIN),
+        },
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+
+
+async def _issue_session(phone: str, now: str):
+    user = await db.users.find_one({"phone": phone}, {"_id": 0})
+    role = "admin" if phone in ADMIN_PHONES else "customer"
+    if not user:
+        user = {"id": str(uuid4()), "phone": phone, "name": "", "email": None, "role": role, "created_at": now}
+        await db.users.insert_one({**user})
+    elif role == "admin" and user["role"] != "admin":
+        await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
+        user["role"] = "admin"
+    return {"token": issue_token(user), "user": public_user(user)}
+
+
+async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer)) -> dict:
     if not creds:
         raise HTTPException(401, "Please log in to continue.")
     try:
@@ -115,6 +139,7 @@ async def request_otp(req: PhoneRequest):
     if recent >= OTP_MAX_PER_10MIN:
         raise HTTPException(429, "Too many codes requested. Please wait 10 minutes and try again.")
     code = f"{secrets.randbelow(10**6):06d}"
+    challenge = make_challenge(phone, code)
     await db.otps.update_many({"phone": phone, "used": False}, {"$set": {"used": True}})
     await db.otps.insert_one({
         "phone": phone,
@@ -124,43 +149,66 @@ async def request_otp(req: PhoneRequest):
         "created_at": now.isoformat(),
         "expires_at": (now + timedelta(minutes=OTP_TTL_MIN)).isoformat(),
     })
-    if SMS_ENABLED:
+    if sms_enabled():
         try:
-            send_sms(phone, f"{code} is your Paws & Whiskers India login code. Valid for {OTP_TTL_MIN} minutes.")
+            send_otp_sms(phone, code)
         except Exception as e:
-            logger.error("Twilio send failed: %s", e)
+            logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
             raise HTTPException(502, "Couldn't send the SMS right now. Please try again.")
-        return {"sent": True, "phone": phone, "dev_mode": False, "expires_in": OTP_TTL_MIN * 60}
+        return {"sent": True, "phone": phone, "challenge": challenge, "dev_mode": False, "expires_in": OTP_TTL_MIN * 60}
+    if is_production():
+        logger.error("Login OTP requested but no SMS provider is configured")
+        raise HTTPException(503, "SMS login is not configured. Add an SMS API key on the server.")
     logger.info("DEV OTP for %s: %s", phone, code)
-    return {"sent": True, "phone": phone, "dev_mode": True, "dev_otp": code, "expires_in": OTP_TTL_MIN * 60}
+    return {
+        "sent": True,
+        "phone": phone,
+        "challenge": challenge,
+        "dev_mode": True,
+        "dev_otp": code,
+        "expires_in": OTP_TTL_MIN * 60,
+    }
 
 
 @router.post("/verify-otp")
 async def verify_otp(req: VerifyRequest):
     phone = normalize_phone(req.phone)
+    code = req.code.strip()
+    if not re.fullmatch(r"\d{6}", code):
+        raise HTTPException(400, "Incorrect code. Please check and try again.")
+    now = datetime.now(timezone.utc).isoformat()
+
+    if req.challenge:
+        try:
+            payload = jwt.decode(req.challenge, JWT_SECRET, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(400, "That code has expired — request a new one.")
+        except jwt.PyJWTError:
+            raise HTTPException(400, "No active code — request a new one.")
+        if payload.get("ph") != phone or not hmac.compare_digest(payload.get("ch", ""), _otp_digest(phone, code)):
+            raise HTTPException(400, "Incorrect code. Please check and try again.")
+        jti = payload.get("jti")
+        if jti:
+            used = await db.otp_challenges.find_one({"jti": jti})
+            if used:
+                raise HTTPException(400, "That code has already been used — request a new one.")
+            await db.otp_challenges.insert_one({"jti": jti, "phone": phone, "used_at": now})
+        await db.otps.update_many({"phone": phone, "used": False}, {"$set": {"used": True}})
+        return await _issue_session(phone, now)
+
     otp = await db.otps.find_one({"phone": phone, "used": False}, sort=[("created_at", -1)])
     if not otp:
         raise HTTPException(400, "No active code — request a new one.")
-    now = datetime.now(timezone.utc).isoformat()
     if otp["expires_at"] < now:
         raise HTTPException(400, "That code has expired — request a new one.")
     if otp["attempts"] >= 5:
         await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
         raise HTTPException(429, "Too many wrong attempts — request a new code.")
-    if not re.fullmatch(r"\d{6}", req.code.strip()) or not check_secret(req.code.strip(), otp["code_hash"]):
+    if not check_secret(code, otp["code_hash"]):
         await db.otps.update_one({"_id": otp["_id"]}, {"$inc": {"attempts": 1}})
         raise HTTPException(400, "Incorrect code. Please check and try again.")
     await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
-
-    user = await db.users.find_one({"phone": phone}, {"_id": 0})
-    role = "admin" if phone in ADMIN_PHONES else "customer"
-    if not user:
-        user = {"id": str(uuid4()), "phone": phone, "name": "", "email": None, "role": role, "created_at": now}
-        await db.users.insert_one({**user})
-    elif role == "admin" and user["role"] != "admin":
-        await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
-        user["role"] = "admin"
-    return {"token": issue_token(user), "user": public_user(user)}
+    return await _issue_session(phone, now)
 
 
 @router.post("/admin-login")

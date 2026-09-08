@@ -55,7 +55,7 @@ export const ProductCard = ({ product, index = 0, compact = false }) => (
       <div className="mt-auto flex items-center justify-between gap-3 pt-2">
         <span data-testid={`product-rating-${product.id}`} className="flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-800 ring-1 ring-teal-200">
           <Star size={14} className="text-teal-600" fill="currentColor" />
-          {product.rating.toFixed(1)}
+          {Number(product.rating || 0).toFixed(1)}
         </span>
         <Link
           data-testid={`view-product-button-${product.id}`}

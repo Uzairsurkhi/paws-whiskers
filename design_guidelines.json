@@ -1,0 +1,256 @@
+{
+  "project_name": "Paws & Whiskers India",
+  "app_type": "content_affiliate_editorial",
+  "tagline": "Unbiased, vet-reviewed pet product guides & honest picks for Indian dogs and cats.",
+  "design_philosophy": {
+    "archetype": "Organic & Earthy meets High-End Editorial Publishing",
+    "theme_mode": "Light First (Warm Cream/Parchment base with high-contrast Charcoal typography and kinetic micro-accents)",
+    "aesthetic_rules": [
+      "NO purple/indigo AI gradients (#7351B7 is forbidden).",
+      "NO generic centered cards or Bootstrap-style 3-column blandness.",
+      "Use warm creamy backgrounds, tactile 1px border lines, asymmetric magazine bento rhythm, and generous breathing room (2-3x typical spacing).",
+      "Real pet photography with spotlight treatment, warm rounded cards (rounded-2xl/rounded-3xl), soft multi-layer ambient drop-shadows.",
+      "Masked line-by-line typography reveal on hero load for editorial prestige.",
+      "Sticky navigation with Apple-style crystal glassmorphism (bg-amber-50/80 backdrop-blur-xl border-amber-200/50).",
+      "Slow editorial marquee ribbon with warm terracotta/sage tones."
+    ]
+  },
+  "typography": {
+    "heading_font": "Plus Jakarta Sans, Cabinet Grotesk, or Fraunces (Editorial Warm Serif/Display)",
+    "body_font": "Plus Jakarta Sans, -apple-system, system-ui, sans-serif",
+    "accent_mono_font": "JetBrains Mono, Menlo, monospace",
+    "hierarchy": {
+      "hero_h1": "text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] text-stone-900",
+      "hero_subtitle": "text-lg sm:text-xl text-stone-600 font-normal leading-relaxed max-w-2xl",
+      "section_h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-stone-900",
+      "section_lead": "text-base sm:text-lg text-stone-600 leading-relaxed",
+      "card_h3": "text-xl sm:text-2xl font-bold tracking-tight text-stone-900",
+      "card_h4": "text-lg font-semibold text-stone-800",
+      "eyebrow_label": "text-xs uppercase tracking-[0.2em] font-bold text-amber-700",
+      "body": "text-base text-stone-700 leading-relaxed",
+      "small_meta": "text-xs sm:text-sm text-stone-500 font-medium"
+    }
+  },
+  "color_palette": {
+    "background_primary": "#FAF7F2",
+    "background_secondary": "#F4EFEA",
+    "background_card": "#FFFFFF",
+    "background_tint_warm": "#FFF9F5",
+    "background_tint_teal": "#F0FDF9",
+    "text_dark_primary": "#1C1917",
+    "text_dark_secondary": "#44403C",
+    "text_muted": "#78716C",
+    "brand_coral_orange": {
+      "base": "#EA580C",
+      "hover": "#C2410C",
+      "light": "#FFEDD5",
+      "border": "#FDBA74",
+      "badge": "#FFF7ED"
+    },
+    "brand_teal_sage": {
+      "base": "#0D9488",
+      "hover": "#0F766E",
+      "light": "#CCFBF1",
+      "border": "#99F6E4",
+      "badge": "#F0FDFA"
+    },
+    "amber_gold": {
+      "base": "#D97706",
+      "light": "#FEF3C7"
+    },
+    "border_subtle": "#E7E2DA",
+    "border_focus": "#EA580C"
+  },
+  "image_urls": {
+    "hero_dogs": {
+      "url": "https://images.unsplash.com/photo-1783441286747-85286dd35aac?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHw0fHxjaGVlcmZ1bCUyMGhhcHB5JTIwZG9nfGVufDB8fHx8MTc4ODg4NzAyMXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Joyful golden retriever in sunny yellow field",
+      "placement": "Homepage Hero Dog card / Spotlight modal"
+    },
+    "hero_cats": {
+      "url": "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxjdXRlJTIwcGxheWZ1bCUyMGNhdHxlbnwwfHx8fDE3ODg4ODcwMjF8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Curious fluffy kitten playfully reaching high",
+      "placement": "Homepage Hero Cat card / Shop by Pet cat card"
+    },
+    "dog_playful_park": {
+      "url": "https://images.unsplash.com/photo-1590527844234-563331a1d02c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwxfHxjaGVlcmZ1bCUyMGhhcHB5JTIwZG9nfGVufDB8fHx8MTc4ODg4NzAyMXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Spaniel smiling outdoors on green lawn",
+      "placement": "Shop by Pet: Dogs hero card"
+    },
+    "cat_playful_grass": {
+      "url": "https://images.unsplash.com/photo-1599572739984-8ae9388f23b5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwyfHxjdXRlJTIwcGxheWZ1bCUyMGNhdHxlbnwwfHx8fDE3ODg4ODcwMjF8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Orange playful tabby cat batting air",
+      "placement": "Article Hero Header: Best Cat Food in India (2026)"
+    },
+    "cat_lazy_cozy": {
+      "url": "https://images.unsplash.com/photo-1547955922-85912e223015?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHw0fHxjdXRlJTIwcGxheWZ1bCUyMGNhdHxlbnwwfHx8fDE3ODg4ODcwMjF8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Peaceful tabby cat resting cozy indoors",
+      "placement": "Featured Guide / Senior cat nutrition guide card"
+    },
+    "dog_fluffy_white": {
+      "url": "https://images.unsplash.com/photo-1737534195272-4b71b9aec672?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHxjaGVlcmZ1bCUyMGhhcHB5JTIwZG9nfGVufDB8fHx8MTc4ODg4NzAyMXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Cheerful fluffy white Samoyed dog",
+      "placement": "Dogs Guide: Summer coat care & grooming in Indian climate"
+    },
+    "pet_food_kibble_orange_bowl": {
+      "url": "https://images.unsplash.com/photo-1655210913315-e8147faf7600?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHw0fHxwZXQlMjBmb29kJTIwYm93bCUyMGtpYmJsZXxlbnwwfHx8fDE3ODg4ODcwMjd8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Crisp nutritious kibble in orange ceramic dish",
+      "placement": "Product Review 1 (Royal Canin / Farmina N&D Adult Cat)"
+    },
+    "pet_food_kibble_blue_bowl": {
+      "url": "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwzfHxwZXQlMjBmb29kJTIwYm93bCUyMGtpYmJsZXxlbnwwfHx8fDE3ODg4ODcwMjd8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Dry cat kibbles with paws near blue bowl",
+      "placement": "Product Review 2 (Whiskas Ocean Fish Adult Cat)"
+    },
+    "pet_food_stainless_bowl": {
+      "url": "https://images.unsplash.com/photo-1714068691210-073dc52c6c1d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwxfHxwZXQlMjBmb29kJTIwYm93bCUyMGtpYmJsZXxlbnwwfHx8fDE3ODg4ODcwMjd8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Pure wholesome pet food in stainless steel bowl",
+      "placement": "Product Review 3 (Arden Grange Sensitive Grain-Free)"
+    }
+  },
+  "site_structure_and_routes": {
+    "current_view_state": "Single Page App with dynamic tabs/views for instantaneous navigation between: 'home', 'article_cat_food', 'dog_picks', 'cat_picks', 'deals', 'guides'",
+    "views": [
+      {
+        "id": "home",
+        "name": "Homepage",
+        "sections": [
+          "Global Header (Logo, Nav items: Dogs, Cats, Reviews, Guides, Deals, Search Trigger, Affiliate badge)",
+          "Editorial Hero Section (Masked line-by-line reveal, dual CTAs: Explore Dog Picks / Explore Cat Picks, Live Search Bar with Indian brand autocomplete)",
+          "Slow Editorial Ribbon (Marquee ticker with curated trust badges: '100% Independent Lab-Tested', 'Vet Verified in Mumbai & Bengaluru', 'Zero Sponsored Rankings', 'Affiliate Supported')",
+          "Shop by Pet (Asymmetrical 2-card split: Dogs vs Cats with interactive hover depth & direct category jumps)",
+          "Popular Indian Pet Categories (Dog Food, Cat Food, Grooming, Toys, Beds, Litter, Harnesses, Treats) with quick pill filters",
+          "Top Picks Comparison Showcase (Interactive Filterable Feed: Dogs vs Cats, Best Overall / Budget / Premium labels, ₹ price, rating badge, Direct affiliate CTA)",
+          "Featured Guides Grid (Bento editorial layout with read-time and tag badges)",
+          "Why Trust Us Strip (4 pillars: Clinical vet advisory panel, real Indian humidity/heat testing, strict ingredient breakdown, clear affiliate disclosure)",
+          "Community Newsletter (Indian pet parents advice letter with instant subscription feedback)"
+        ]
+      },
+      {
+        "id": "article_cat_food",
+        "name": "Article: Best Cat Food in India (2026)",
+        "sections": [
+          "Article Header (Eyebrow: Cat Nutrition Guide 2026, Title: 'Best Cat Food in India (2026): Vet-Tested & Lab-Reviewed', Author & Vet-reviewed timestamp, Reading time: 8 min, Share/Bookmark)",
+          "Affiliate Disclosure Ribbon (Clear, transparent, non-hidden callout)",
+          "Quick Answer Box (The 30-Second Verdict: Top 3 recommendations for Best Overall, Budget Pick, and Sensitive Stomach)",
+          "Sticky Responsive Comparison Table (Columns: Product, Best For, Food Type, Price Range ₹, Lab Rating, Check Price Button)",
+          "Detailed In-Depth Review Cards (Farmina N&D, Royal Canin Fit 32, Whiskas Ocean Fish, Arden Grange Grain-Free - with Pros, Cons, Ideal Pet, Indian climate tip, First 5 ingredients, verified ₹ price check)",
+          "Buying Guide Chapters (Accordion / Chapter tabs: 1. Protein vs Filler in Indian market, 2. Hydration & Urinary health in hot summers, 3. Wet vs Dry food math, 4. Transitioning fussy eaters)",
+          "Frequently Asked Questions (Interactive FAQ accordion with schema-style clarity)",
+          "Related Articles & Guides (Next reading: Best Cat Litter for Mumbai monsoons, Top Cat Grooming brushes)"
+        ]
+      }
+    ]
+  },
+  "component_guidelines": {
+    "header": {
+      "style": "sticky top-0 z-50 backdrop-blur-xl bg-[#FAF7F2]/85 border-b border-[#E7E2DA]/80 shadow-xs",
+      "elements": [
+        "Brand Logo: 'Paws & Whiskers' with cute paw + whisker duotone glyph + 'INDIA' small badge",
+        "Nav Links: Dogs, Cats, Best Cat Food 2026 (Article), Guides, Deals, Why Trust Us",
+        "Search Trigger Input with quick shortcut pill ('⌘K')",
+        "Mobile responsive drawer with full category navigation"
+      ]
+    },
+    "hero_section": {
+      "headline": "Better picks for happier pets.",
+      "headline_reveal_animation": "Masked line reveal using framer-motion: overflow-hidden container with y: 100% -> 0% stagger",
+      "subheadline": "We lab-test nutrition, durability, and value for Indian weather and local feeding realities. No sponsored rankings — just honest reviews for your four-legged family.",
+      "ctas": [
+        {
+          "label": "Explore Dog Picks",
+          "action": "filter_dog_picks",
+          "style": "bg-[#EA580C] hover:bg-[#C2410C] text-white font-semibold px-7 py-3.5 rounded-full shadow-md hover:shadow-lg transition-transform active:scale-95"
+        },
+        {
+          "label": "Explore Cat Picks",
+          "action": "open_cat_article",
+          "style": "bg-stone-900 hover:bg-stone-800 text-white font-semibold px-7 py-3.5 rounded-full shadow-sm hover:shadow transition-transform active:scale-95"
+        }
+      ],
+      "search_bar": {
+        "placeholder": "Search dog food, cat litter, chew toys, or brands like Royal Canin, Farmina...",
+        "tags": ["Royal Canin", "Cat Wet Food", "Puppy Kibble", "Tofu Litter", "Orthopedic Dog Bed"]
+      }
+    },
+    "product_card": {
+      "badge_styles": {
+        "Best Overall": "bg-amber-100 text-amber-900 border border-amber-300 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider",
+        "Budget Pick": "bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider",
+        "Premium Pick": "bg-purple-100 text-purple-900 border border-purple-300 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider",
+        "Vet Choice": "bg-teal-100 text-teal-900 border border-teal-300 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider"
+      },
+      "cta_button": "bg-[#EA580C] hover:bg-[#C2410C] text-white text-sm font-bold py-2.5 px-5 rounded-xl shadow-sm hover:shadow flex items-center justify-center gap-2",
+      "test_ids": {
+        "card": "product-card-{id}",
+        "affiliate_btn": "check-price-button-{id}",
+        "rating_badge": "product-rating-{id}"
+      }
+    },
+    "comparison_table": {
+      "container_style": "overflow-x-auto rounded-2xl border border-stone-200 bg-white shadow-sm",
+      "header_style": "bg-stone-100 text-stone-800 font-bold text-xs uppercase tracking-wider border-b border-stone-200",
+      "row_hover": "hover:bg-amber-50/50 transition-colors"
+    },
+    "trust_strip": {
+      "cards": [
+        {
+          "title": "Clinical Vet Advisory",
+          "desc": "Every product recommendation is cross-referenced with practicing companion animal vets across Delhi, Bangalore & Mumbai."
+        },
+        {
+          "title": "Tested in Indian Weather",
+          "desc": "We evaluate how kibble retains crunch, treats survive humidity, and harnesses resist tropical monsoon moisture."
+        },
+        {
+          "title": "Strict Lab Transparency",
+          "desc": "Real protein percentage vs filler carbohydrate breakdown. No misleading marketing claims."
+        },
+        {
+          "title": "Reader Supported",
+          "desc": "We earn an affiliate commission when you buy through our links at zero extra cost to you. Brands cannot buy ranks."
+        }
+      ]
+    }
+  },
+  "interactive_features": {
+    "live_filter": "Filter top picks by Dog/Cat and Category (Food, Health, Treats, Gear)",
+    "interactive_price_checker": "Modal / Tooltip simulating real-time Indian retailer stock (Amazon India, Supertails, Zigly, Heads Up For Tails)",
+    "quick_calculator": "Monthly pet food cost estimator in ₹ based on pet weight and food brand tier",
+    "faq_accordion": "Expandable answers for immediate consumer clarity",
+    "search_modal": "Live instant filtering modal across all curated products and guides"
+  },
+  "motion_and_animation": {
+    "scroll_physics": "Smooth fluid transitions with Framer Motion scroll and viewport triggers",
+    "marquee": "Continuous smooth drift with 28s duration, paused on hover",
+    "hero_reveal": "Initial page load stagger: line 1 delay 0.1s, line 2 delay 0.25s, actions delay 0.4s",
+    "card_hover": "Hover translate -y-1.5 with soft warm shadow expansion"
+  },
+  "data_testid_manifest": {
+    "header_nav": "main-navbar",
+    "nav_home_link": "nav-home-link",
+    "nav_dogs_link": "nav-dogs-link",
+    "nav_cats_link": "nav-cats-link",
+    "nav_article_link": "nav-cat-food-article-link",
+    "hero_cta_dog": "hero-cta-dog-picks",
+    "hero_cta_cat": "hero-cta-cat-picks",
+    "search_input": "site-search-input",
+    "pet_toggle_dog": "pet-filter-dog",
+    "pet_toggle_cat": "pet-filter-cat",
+    "quick_answer_box": "quick-answer-box",
+    "comparison_table": "cat-food-comparison-table",
+    "affiliate_disclosure": "affiliate-disclosure-banner",
+    "newsletter_input": "newsletter-email-input",
+    "newsletter_submit": "newsletter-submit-button"
+  },
+  "instructions_to_main_agent": [
+    "Build the complete application inside /app/frontend using React, Tailwind CSS, Lucide Icons, and Framer Motion.",
+    "Implement both the Homepage and the dedicated in-depth Article Page ('Best Cat Food in India 2026') seamlessly switchable via the navigation bar and hero CTA buttons.",
+    "Follow the creamy warm aesthetic: background '#FAF7F2', charcoal text '#1C1917', vibrant coral orange '#EA580C' for buttons, and soft teal '#0D9488' for ratings and trust cues.",
+    "Include the interactive Pet Food Monthly Budget Calculator in ₹ (INR), which elevates the utility of the site for Indian pet parents.",
+    "Implement the live search modal and category filtering for high engagement.",
+    "Include complete data for Indian cat and dog foods (Farmina N&D, Royal Canin, Whiskas, Drools Focus, Arden Grange, Orijen, Sheba, Purepet) with accurate ₹ pricing and AAFCO / vet-backed analysis.",
+    "Ensure all testing attributes with data-testid match the manifest above.",
+    "Ensure responsive mobile-first behavior with clear navigation and non-cramped layouts."
+  ]
+}

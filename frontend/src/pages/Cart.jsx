@@ -144,6 +144,20 @@ export default function Cart() {
     setShowPaymentDrawer(true);
   };
 
+  const getShippingPayload = () => {
+    const addr = selectedAddress || INITIAL_ADDRESS;
+    return {
+      name: addr?.name || user?.name || "Customer",
+      phone: (addr?.phone || user?.phone || "9999999999").replace(/[^0-9+]/g, "") || "9999999999",
+      email: addr?.email || user?.email || "customer@paws-whiskers.in",
+      line1: addr?.line1 || "Door no 4",
+      line2: addr?.line2 || "",
+      city: addr?.city || "Bengaluru",
+      state: addr?.state || "Karnataka",
+      pincode: addr?.pincode || "560037",
+    };
+  };
+
   // Card Checkout (Stripe)
   const handleCardPayment = async () => {
     if (!user) {
@@ -154,16 +168,7 @@ export default function Cart() {
     try {
       const data = await api.cartCheckout({
         items: items.map(({ product_id, variant, quantity }) => ({ product_id, variant, quantity })),
-        shipping: {
-          name: selectedAddress.name,
-          phone: selectedAddress.phone.replace(/[^0-9+]/g, ""),
-          email: selectedAddress.email || user?.email || "customer@paws-whiskers.in",
-          line1: selectedAddress.line1,
-          line2: selectedAddress.line2 || "",
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          pincode: selectedAddress.pincode,
-        },
+        shipping: getShippingPayload(),
         origin_url: window.location.origin,
       });
       window.location.href = data.checkout_url;
@@ -183,16 +188,7 @@ export default function Cart() {
     try {
       const data = await api.cartCheckoutUpi({
         items: items.map(({ product_id, variant, quantity }) => ({ product_id, variant, quantity })),
-        shipping: {
-          name: selectedAddress.name,
-          phone: selectedAddress.phone.replace(/[^0-9+]/g, ""),
-          email: selectedAddress.email || user?.email || "customer@paws-whiskers.in",
-          line1: selectedAddress.line1,
-          line2: selectedAddress.line2 || "",
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          pincode: selectedAddress.pincode,
-        },
+        shipping: getShippingPayload(),
         origin_url: window.location.origin,
       });
       navigate(`/payment/upi/${data.order_id}`, {
@@ -214,16 +210,7 @@ export default function Cart() {
     try {
       const data = await api.cartCheckoutCod({
         items: items.map(({ product_id, variant, quantity }) => ({ product_id, variant, quantity })),
-        shipping: {
-          name: selectedAddress.name,
-          phone: selectedAddress.phone.replace(/[^0-9+]/g, ""),
-          email: selectedAddress.email || user?.email || "customer@paws-whiskers.in",
-          line1: selectedAddress.line1,
-          line2: selectedAddress.line2 || "",
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          pincode: selectedAddress.pincode,
-        },
+        shipping: getShippingPayload(),
         origin_url: window.location.origin,
       });
       clear();

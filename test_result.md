@@ -101,3 +101,60 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "in production i have deployed and when i try to signup it showing Something went wrong — please try again."
+
+backend:
+  - task: "Fix missing dnspython for MongoDB Atlas SRV URI"
+    implemented: true
+    working: true
+    file: "backend/requirements.txt"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added dnspython==2.8.0 which was previously stripped from requirements.txt, causing pymongo.errors.ConfigurationError when resolving mongodb+srv:// Atlas URIs."
+
+  - task: "CORS and server error handling"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Updated CORSMiddleware with allow_origin_regex support for credentials compatibility across domains and added global exception handler to return JSON detail instead of plain text 500."
+
+frontend:
+  - task: "Enhanced error message parsing in API client"
+    implemented: true
+    working: true
+    file: "frontend/src/lib/api.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Updated errMsg() to extract detail, message, error, string error responses, and e.message before falling back to generic message."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Production signup error handling and MongoDB connection"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Resolved the root causes for the generic 'Something went wrong — please try again.' error during production signup: missing dnspython dependency in requirements.txt, CORS origin credentials mismatch, and missing JSON error handling in FastAPI."

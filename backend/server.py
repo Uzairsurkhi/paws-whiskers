@@ -10,6 +10,8 @@ load_dotenv()
 
 import stripe
 from fastapi import FastAPI, APIRouter, Request, HTTPException
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 
@@ -615,16 +617,48 @@ app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(shop_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_origins_env = os.environ.get("CORS_ORIGINS", "").strip()
+cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
+if cors_origins and "*" not in cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origin_regex=r".*",
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, (HTTPException, StarletteHTTPException)):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None),
+        )
+    logger.error("Unhandled error processing %s: %s", request.url.path, exc, exc_info=True)
+    msg = str(exc)
+    # If MongoDB or connection error, provide helpful diagnostic
+    if "dnspython" in msg.lower() or "srv" in msg.lower() or "configurationerror" in msg.lower():
+        msg = "Database configuration error: dnspython is required for mongodb+srv connection."
+    elif "serverselectiontimeouterror" in msg.lower() or "timeout" in msg.lower():
+        msg = "Database connection timed out. Please check MongoDB Atlas network access."
+    elif not msg:
+        msg = "An unexpected server error occurred."
+    return JSONResponse(status_code=500, content={"detail": msg})
 
 
 @app.on_event("startup")

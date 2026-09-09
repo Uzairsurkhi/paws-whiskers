@@ -58,5 +58,11 @@ export const errMsg = (e, fallback = "Something went wrong — please try again.
   const d = e?.response?.data?.detail;
   if (typeof d === "string") return d;
   if (Array.isArray(d) && d[0]?.msg) return d[0].msg.replace(/^Value error, /, "");
+  if (typeof e?.response?.data?.message === "string") return e.response.data.message;
+  if (typeof e?.response?.data?.error === "string") return e.response.data.error;
+  if (typeof e?.response?.data === "string" && e.response.data.trim().length > 0 && !e.response.data.includes("<html")) {
+    return e.response.data.trim();
+  }
+  if (e?.message && e.message !== "Error") return e.message;
   return fallback;
 };

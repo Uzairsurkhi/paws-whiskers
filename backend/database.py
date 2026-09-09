@@ -11,7 +11,7 @@ _local_mongo = any(h in _mongo_url for h in ("localhost", "127.0.0.1", "0.0.0.0"
 if _mongo_url and not _local_mongo:
     from motor.motor_asyncio import AsyncIOMotorClient
 
-    client = AsyncIOMotorClient(_mongo_url)
+    client = AsyncIOMotorClient(_mongo_url, serverSelectionTimeoutMS=5000)
     db = client[_db_name]
 else:
     from memory_db import MemoryClient

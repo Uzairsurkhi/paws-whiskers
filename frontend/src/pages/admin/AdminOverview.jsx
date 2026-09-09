@@ -9,87 +9,29 @@ import {
   Mail,
   CheckCircle2,
   ChevronRight,
-  MoreHorizontal,
   ArrowRight,
   Calendar,
   ChevronDown,
-  Sparkles,
+  Inbox,
 } from "lucide-react";
 
 export function AdminOverview({ stats, onNavigate }) {
   const [period, setPeriod] = useState("Last 30 days");
 
-  // Chart data
-  const chartData = [
-    { date: "Aug 10", val: 18000, x: 20, y: 155 },
-    { date: "Aug 15", val: 24000, x: 105, y: 140 },
-    { date: "Aug 20", val: 32000, x: 190, y: 120 },
-    { date: "Aug 25", val: 42000, x: 275, y: 95 },
-    { date: "Aug 30", val: 48000, x: 360, y: 82 },
-    { date: "Sep 5", val: 78000, x: 445, y: 35 },
-  ];
-
-  const recentOrders = [
-    {
-      id: "#PW1024",
-      customer: "Ayesha Khan",
-      items: 3,
-      amount: "₹2,499",
-      status: "Paid",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      date: "Today, 10:24 AM",
-    },
-    {
-      id: "#PW1023",
-      customer: "Rahul Sharma",
-      items: 1,
-      amount: "₹899",
-      status: "Processing",
-      statusColor: "bg-orange-50 text-orange-700 border-orange-200",
-      date: "Today, 09:17 AM",
-    },
-    {
-      id: "#PW1022",
-      customer: "Neha Verma",
-      items: 2,
-      amount: "₹1,799",
-      status: "Shipped",
-      statusColor: "bg-sky-50 text-sky-700 border-sky-200",
-      date: "Yesterday, 7:45 PM",
-    },
-    {
-      id: "#PW1021",
-      customer: "Karan Mehta",
-      items: 1,
-      amount: "₹599",
-      status: "Delivered",
-      statusColor: "bg-teal-50 text-teal-700 border-teal-200",
-      date: "Yesterday, 4:12 PM",
-    },
-    {
-      id: "#PW1020",
-      customer: "Simran Kaur",
-      items: 4,
-      amount: "₹3,298",
-      status: "Paid",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      date: "02 Sep 2026",
-    },
-  ];
+  const dates = ["Aug 10", "Aug 15", "Aug 20", "Aug 25", "Aug 30", "Sep 5"];
 
   const categories = [
-    { name: "Dog Food", emoji: "🐶", orders: "42 orders", pct: 32 },
-    { name: "Cat Food", emoji: "🐱", orders: "28 orders", pct: 21 },
-    { name: "Treats", emoji: "🦴", orders: "18 orders", pct: 14 },
-    { name: "Grooming", emoji: "🐾", orders: "12 orders", pct: 9 },
-    { name: "Toys", emoji: "🎾", orders: "10 orders", pct: 8 },
+    { name: "Dog Food", emoji: "🐶", orders: "0 orders", pct: 0 },
+    { name: "Cat Food", emoji: "🐱", orders: "0 orders", pct: 0 },
+    { name: "Treats", emoji: "🦴", orders: "0 orders", pct: 0 },
+    { name: "Grooming", emoji: "🐾", orders: "0 orders", pct: 0 },
+    { name: "Toys", emoji: "🎾", orders: "0 orders", pct: 0 },
   ];
 
   return (
     <div className="space-y-6">
       {/* Greeting Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-stone-200/80 bg-gradient-to-r from-[#FFFBF7] via-[#FFF6ED] to-[#FFF0E2] p-6 shadow-sm sm:p-8">
-        {/* Background watermark paws */}
         <div className="pointer-events-none absolute inset-0 opacity-10">
           <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
             <pattern id="admin-paws" width="80" height="80" patternUnits="userSpaceOnUse">
@@ -110,7 +52,6 @@ export function AdminOverview({ stats, onNavigate }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Cutout style dog & cat illustrations */}
             <div className="hidden lg:flex items-center gap-3">
               <div className="flex -space-x-3 overflow-hidden rounded-2xl bg-white/70 p-1.5 shadow-sm backdrop-blur-sm">
                 <img
@@ -131,7 +72,6 @@ export function AdminOverview({ stats, onNavigate }) {
               </div>
             </div>
 
-            {/* Date selector button */}
             <div className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs font-bold text-stone-800 shadow-sm transition hover:bg-stone-50">
               <Calendar size={14} className="text-stone-500" />
               <span>{period}</span>
@@ -152,11 +92,12 @@ export function AdminOverview({ stats, onNavigate }) {
             <div className="w-20">
               <svg viewBox="0 0 80 32" className="h-8 w-full overflow-visible">
                 <path
-                  d="M0 26 Q 20 28, 35 18 T 60 14 T 80 4"
+                  d="M0 24 L 80 24"
                   fill="none"
                   stroke="#10B981"
                   strokeWidth="2.5"
                   strokeLinecap="round"
+                  strokeDasharray="4 3"
                 />
               </svg>
             </div>
@@ -164,11 +105,10 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Revenue (Paid)</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              {stats?.revenue_paise ? `₹ ${(stats.revenue_paise / 100).toLocaleString("en-IN")}` : "₹84,250"}
+              ₹0
             </p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-              <span>↑ 12.4%</span>
-              <span className="font-medium text-stone-400">vs last month</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
+              <span>0% vs last month</span>
             </div>
           </div>
         </div>
@@ -182,11 +122,12 @@ export function AdminOverview({ stats, onNavigate }) {
             <div className="w-20">
               <svg viewBox="0 0 80 32" className="h-8 w-full overflow-visible">
                 <path
-                  d="M0 24 Q 25 26, 40 16 T 65 14 T 80 6"
+                  d="M0 24 L 80 24"
                   fill="none"
                   stroke="#EA580C"
                   strokeWidth="2.5"
                   strokeLinecap="round"
+                  strokeDasharray="4 3"
                 />
               </svg>
             </div>
@@ -194,11 +135,10 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Total Orders</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              {stats?.orders_total || stats?.orders_paid || "128"}
+              0
             </p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-              <span>↑ 8.1%</span>
-              <span className="font-medium text-stone-400">vs last month</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
+              <span>0% vs last month</span>
             </div>
           </div>
         </div>
@@ -212,11 +152,12 @@ export function AdminOverview({ stats, onNavigate }) {
             <div className="w-20">
               <svg viewBox="0 0 80 32" className="h-8 w-full overflow-visible">
                 <path
-                  d="M0 26 Q 20 28, 35 24 T 55 18 T 80 8"
+                  d="M0 24 L 80 24"
                   fill="none"
                   stroke="#F43F5E"
                   strokeWidth="2.5"
                   strokeLinecap="round"
+                  strokeDasharray="4 3"
                 />
               </svg>
             </div>
@@ -224,11 +165,10 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">To Fulfil</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              {stats?.pending_fulfillment != null ? stats.pending_fulfillment : "4"}
+              0
             </p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-rose-600">
-              <span>↑ 33.3%</span>
-              <span className="font-medium text-stone-400">vs last month</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
+              <span>0% vs last month</span>
             </div>
           </div>
         </div>
@@ -242,11 +182,12 @@ export function AdminOverview({ stats, onNavigate }) {
             <div className="w-20">
               <svg viewBox="0 0 80 32" className="h-8 w-full overflow-visible">
                 <path
-                  d="M0 24 Q 25 26, 45 20 T 65 14 T 80 6"
+                  d="M0 24 L 80 24"
                   fill="none"
                   stroke="#0284C7"
                   strokeWidth="2.5"
                   strokeLinecap="round"
+                  strokeDasharray="4 3"
                 />
               </svg>
             </div>
@@ -254,11 +195,10 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Customers</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              {stats?.customers || "96"}
+              0
             </p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-              <span>↑ 15.2%</span>
-              <span className="font-medium text-stone-400">vs last month</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
+              <span>0% vs last month</span>
             </div>
           </div>
         </div>
@@ -292,38 +232,26 @@ export function AdminOverview({ stats, onNavigate }) {
                   <div className="flex items-center border-b border-stone-100 pb-1"><span>0</span></div>
                 </div>
 
-                {/* SVG Curve */}
+                {/* SVG Curve at 0 baseline */}
                 <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 460 200">
-                  <defs>
-                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#EA580C" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  {/* Area fill */}
-                  <path
-                    d="M 20 155 Q 70 148, 105 140 T 190 120 T 275 95 T 360 82 T 445 35 L 445 190 L 20 190 Z"
-                    fill="url(#salesGradient)"
-                  />
-                  {/* Stroke line */}
-                  <path
-                    d="M 20 155 Q 70 148, 105 140 T 190 120 T 275 95 T 360 82 T 445 35"
-                    fill="none"
+                  <line
+                    x1="20"
+                    y1="190"
+                    x2="445"
+                    y2="190"
                     stroke="#EA580C"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
+                    strokeWidth="2.5"
+                    strokeDasharray="5 5"
                   />
-                  {/* Data points */}
-                  {chartData.map((pt, i) => (
+                  {dates.map((d, i) => (
                     <circle
                       key={i}
-                      cx={pt.x}
-                      cy={pt.y}
-                      r="4.5"
+                      cx={20 + i * 85}
+                      cy={190}
+                      r="4"
                       fill="#FFFFFF"
                       stroke="#EA580C"
-                      strokeWidth="2.5"
-                      className="transition-transform hover:scale-150"
+                      strokeWidth="2"
                     />
                   ))}
                 </svg>
@@ -331,8 +259,8 @@ export function AdminOverview({ stats, onNavigate }) {
 
               {/* X Axis Dates */}
               <div className="mt-2 flex justify-between px-2 text-[11px] font-semibold text-stone-400">
-                {chartData.map((pt) => (
-                  <span key={pt.date}>{pt.date}</span>
+                {dates.map((d) => (
+                  <span key={d}>{d}</span>
                 ))}
               </div>
             </div>
@@ -340,15 +268,15 @@ export function AdminOverview({ stats, onNavigate }) {
             {/* Right Summary Column */}
             <div className="flex flex-col justify-center space-y-5 rounded-2xl bg-stone-50/70 p-4 border border-stone-100">
               <div>
-                <p className="font-display text-2xl font-black text-stone-900">₹84,250</p>
+                <p className="font-display text-2xl font-black text-stone-900">₹0</p>
                 <p className="text-xs font-semibold text-stone-500">Total Revenue</p>
               </div>
               <div className="border-t border-stone-200/60 pt-3">
-                <p className="font-display text-2xl font-black text-stone-900">128</p>
+                <p className="font-display text-2xl font-black text-stone-900">0</p>
                 <p className="text-xs font-semibold text-stone-500">Total Orders</p>
               </div>
               <div className="border-t border-stone-200/60 pt-3">
-                <p className="font-display text-2xl font-black text-stone-900">₹658</p>
+                <p className="font-display text-2xl font-black text-stone-900">₹0</p>
                 <p className="text-xs font-semibold text-stone-500">Average Order Value</p>
               </div>
             </div>
@@ -378,7 +306,7 @@ export function AdminOverview({ stats, onNavigate }) {
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                     <AlertTriangle size={18} />
                   </div>
-                  <span className="text-xs font-bold text-stone-800">4 orders awaiting fulfilment</span>
+                  <span className="text-xs font-bold text-stone-800">0 orders awaiting fulfilment</span>
                 </div>
                 <ChevronRight size={16} className="text-stone-400" />
               </button>
@@ -391,7 +319,7 @@ export function AdminOverview({ stats, onNavigate }) {
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-[#EA580C]">
                     <Package size={18} />
                   </div>
-                  <span className="text-xs font-bold text-stone-800">3 products running low on stock</span>
+                  <span className="text-xs font-bold text-stone-800">0 products running low on stock</span>
                 </div>
                 <ChevronRight size={16} className="text-stone-400" />
               </button>
@@ -404,7 +332,7 @@ export function AdminOverview({ stats, onNavigate }) {
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-[#EA580C]">
                     <Mail size={18} />
                   </div>
-                  <span className="text-xs font-bold text-stone-800">2 customer emails waiting</span>
+                  <span className="text-xs font-bold text-stone-800">0 customer emails waiting</span>
                 </div>
                 <ChevronRight size={16} className="text-stone-400" />
               </button>
@@ -441,41 +369,14 @@ export function AdminOverview({ stats, onNavigate }) {
             </button>
           </div>
 
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-stone-200/70 text-stone-500">
-                  <th className="pb-3 font-bold uppercase tracking-wider">Order ID</th>
-                  <th className="pb-3 font-bold uppercase tracking-wider">Customer</th>
-                  <th className="pb-3 font-bold uppercase tracking-wider">Items</th>
-                  <th className="pb-3 font-bold uppercase tracking-wider">Amount</th>
-                  <th className="pb-3 font-bold uppercase tracking-wider">Status</th>
-                  <th className="pb-3 font-bold uppercase tracking-wider">Date</th>
-                  <th className="pb-3 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {recentOrders.map((ord) => (
-                  <tr key={ord.id} className="transition hover:bg-stone-50/80">
-                    <td className="py-3.5 font-bold font-mono-accent text-stone-900">{ord.id}</td>
-                    <td className="py-3.5 font-medium text-stone-700">{ord.customer}</td>
-                    <td className="py-3.5 text-stone-500">{ord.items}</td>
-                    <td className="py-3.5 font-bold text-stone-900">{ord.amount}</td>
-                    <td className="py-3.5">
-                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${ord.statusColor}`}>
-                        {ord.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 text-stone-500">{ord.date}</td>
-                    <td className="py-3.5 text-right text-stone-400">
-                      <button className="rounded p-1 hover:bg-stone-100 hover:text-stone-700">
-                        <MoreHorizontal size={15} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 p-10 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-[#EA580C]">
+              <Inbox size={24} />
+            </div>
+            <h3 className="font-display mt-3 text-sm font-bold text-stone-900">No orders placed yet</h3>
+            <p className="mt-1 text-xs text-stone-500 max-w-sm">
+              Customer orders will appear here automatically as soon as they complete checkout.
+            </p>
           </div>
         </div>
 
@@ -503,7 +404,7 @@ export function AdminOverview({ stats, onNavigate }) {
                 <div className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
                   <div
                     className="h-full rounded-full bg-[#EA580C] transition-all duration-500"
-                    style={{ width: `${c.pct * 2.5}%` }}
+                    style={{ width: "0%" }}
                   />
                 </div>
               </div>
@@ -523,36 +424,10 @@ export function AdminOverview({ stats, onNavigate }) {
             </button>
           </div>
 
-          <div className="mt-5 space-y-4">
-            <div className="flex items-center justify-between rounded-xl border border-stone-100 p-3 hover:bg-stone-50 transition">
-              <div className="flex items-center gap-3">
-                <img
-                  src="https://images.unsplash.com/photo-1589924691995-400dc9ecc119?crop=entropy&cs=srgb&fm=jpg&q=85&w=120"
-                  alt="Royal Canin"
-                  className="h-11 w-11 rounded-lg object-cover ring-1 ring-stone-200"
-                />
-                <div>
-                  <p className="text-xs font-bold text-stone-900">Royal Canin Adult Dog Food</p>
-                  <p className="text-[11px] text-stone-500">124 units sold</p>
-                </div>
-              </div>
-              <p className="font-display text-sm font-bold text-stone-900">₹2,499</p>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl border border-stone-100 p-3 hover:bg-stone-50 transition">
-              <div className="flex items-center gap-3">
-                <img
-                  src="https://images.unsplash.com/photo-1655210913315-e8147faf7600?crop=entropy&cs=srgb&fm=jpg&q=85&w=120"
-                  alt="Whiskas"
-                  className="h-11 w-11 rounded-lg object-cover ring-1 ring-stone-200"
-                />
-                <div>
-                  <p className="text-xs font-bold text-stone-900">Whiskas Adult Cat Food</p>
-                  <p className="text-[11px] text-stone-500">96 units sold</p>
-                </div>
-              </div>
-              <p className="font-display text-sm font-bold text-stone-900">₹899</p>
-            </div>
+          <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-200 bg-stone-50/50 p-6 text-center">
+            <Package size={24} className="text-stone-400" />
+            <p className="mt-2 text-xs font-bold text-stone-700">No product sales yet</p>
+            <p className="mt-0.5 text-[11px] text-stone-400">Best selling items will rank here once purchases start</p>
           </div>
         </div>
 
@@ -567,29 +442,21 @@ export function AdminOverview({ stats, onNavigate }) {
           </div>
 
           <div className="mt-4 flex items-baseline gap-3">
-            <span className="font-display text-3xl font-black text-stone-900">96</span>
-            <span className="text-xs font-bold text-emerald-600">↑ 15.2% vs last month</span>
+            <span className="font-display text-3xl font-black text-stone-900">0</span>
+            <span className="text-xs font-medium text-stone-400">0% vs last month</span>
           </div>
           <p className="text-xs text-stone-400">New verified customer registrations</p>
 
-          <div className="mt-5 h-16 w-full">
-            <svg viewBox="0 0 200 60" className="h-full w-full overflow-visible">
-              <defs>
-                <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10B981" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M 0 50 Q 50 48, 80 40 T 130 25 T 180 15 T 200 8 L 200 60 L 0 60 Z"
-                fill="url(#growthGrad)"
-              />
-              <path
-                d="M 0 50 Q 50 48, 80 40 T 130 25 T 180 15 T 200 8"
-                fill="none"
+          <div className="mt-5 h-16 w-full flex items-center">
+            <svg viewBox="0 0 200 30" className="h-6 w-full overflow-visible">
+              <line
+                x1="0"
+                y1="15"
+                x2="200"
+                y2="15"
                 stroke="#10B981"
-                strokeWidth="2.5"
-                strokeLinecap="round"
+                strokeWidth="2"
+                strokeDasharray="4 4"
               />
             </svg>
           </div>

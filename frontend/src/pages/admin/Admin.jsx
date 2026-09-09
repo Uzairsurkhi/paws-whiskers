@@ -30,7 +30,7 @@ import { AdminEmails } from "./AdminEmails";
 
 const NAV_ITEMS = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
-  { key: "orders", label: "Orders", icon: ShoppingBag, badge: 4 },
+  { key: "orders", label: "Orders", icon: ShoppingBag },
   { key: "products", label: "Products", icon: Package },
   { key: "inventory", label: "Inventory", icon: Boxes },
   { key: "customers", label: "Customers", icon: Users },
@@ -230,7 +230,6 @@ export default function Admin() {
             {/* Notification Bell */}
             <button className="relative flex h-9 w-9 items-center justify-center rounded-2xl border border-stone-200 bg-stone-50 text-stone-600 transition hover:bg-stone-100">
               <Bell size={16} />
-              <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-[#EA580C] ring-2 ring-white" />
             </button>
 
             {/* Admin Avatar Header Pill */}

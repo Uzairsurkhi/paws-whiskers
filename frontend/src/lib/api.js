@@ -1,6 +1,17 @@
 import axios from "axios";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
+export const getApiBase = () => {
+  if (typeof window !== "undefined" && window.location && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
+      return "/api";
+    }
+  }
+  const envUrl = (process.env.REACT_APP_BACKEND_URL || "").trim();
+  return envUrl ? `${envUrl.replace(/\/+$/, "")}/api` : "/api";
+};
+
+export const API = getApiBase();
 export const TOKEN_KEY = "pw_token";
 
 const http = axios.create({ baseURL: API });

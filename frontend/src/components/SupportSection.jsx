@@ -3,8 +3,8 @@ import axios from "axios";
 import { Coffee, FlaskConical, RefreshCw, Heart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Reveal } from "./Reveal";
+import { API } from "../lib/api";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || ""}/api`;
 const ICONS = [Coffee, FlaskConical, RefreshCw];
 
 export const SupportSection = () => {

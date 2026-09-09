@@ -39,6 +39,18 @@ const ScrollManager = () => {
   return null;
 };
 
+const StoreHeader = ({ onSearch }) => {
+  const { pathname } = useLocation();
+  if (pathname.startsWith("/admin")) return null;
+  return <Header onSearch={onSearch} />;
+};
+
+const StoreFooter = () => {
+  const { pathname } = useLocation();
+  if (pathname.startsWith("/admin")) return null;
+  return <Footer />;
+};
+
 function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const lenisRef = useRef(null);
@@ -78,7 +90,7 @@ function App() {
       <div className="min-h-screen bg-[#FAF7F2]">
         <div className="grain-overlay" />
         <ScrollManager />
-        <Header onSearch={() => setSearchOpen(true)} />
+        <StoreHeader onSearch={() => setSearchOpen(true)} />
         <Routes>
           <Route path="/" element={<Home onSearch={() => setSearchOpen(true)} />} />
           <Route path="/guides/best-cat-food-india-2026" element={<Article />} />
@@ -96,7 +108,7 @@ function App() {
           <Route path="/payment/cancel" element={<PaymentCancel />} />
           <Route path="/payment/upi/:orderId" element={<RequireAuth><UpiPayment /></RequireAuth>} />
         </Routes>
-        <Footer />
+        <StoreFooter />
         <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
         <Toaster position="bottom-center" richColors />
       </div>

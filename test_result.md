@@ -142,19 +142,31 @@ frontend:
         agent: "main"
         comment: "Updated errMsg() to extract detail, message, error, string error responses, and e.message before falling back to generic message."
 
+  - task: "Store Admin Dashboard UI revamp"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/admin/Admin.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Built full admin layout matching expected UI: custom left sidebar with brand logo and navigation, top search/location/notification header, Good morning greeting banner with pet illustration, 4 KPI cards with sparklines, Sales Overview area chart with revenue breakdown, Needs Attention widget, Recent Orders table with status pills, Top Selling Categories with progress bars, Best Selling Products, and Customer Growth widget."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Production signup error handling and MongoDB connection"
+    - "Store Admin Dashboard UI revamp"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Resolved the root causes for the generic 'Something went wrong — please try again.' error during production signup: missing dnspython dependency in requirements.txt, CORS origin credentials mismatch, and missing JSON error handling in FastAPI."
+    message: "Implemented the exact expected Store Admin dashboard layout including full sidebar, top header bar, greeting card, KPI cards, Sales Overview chart, Needs Attention cards, Recent Orders table, Top Selling Categories, and brand banners."

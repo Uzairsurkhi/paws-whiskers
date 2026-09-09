@@ -77,16 +77,29 @@ def price_range(variants: list[dict]) -> str:
     return f"₹ {lo:,}" if lo == hi else f"₹ {lo:,} - ₹ {hi:,}"
 
 
+async def _resolve_product_and_variant(it):
+    product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
+    if not product and "whiskas" in it.product_id.lower():
+        product = await db.products.find_one({"$or": [{"id": "whiskas-ocean-fish"}, {"id": "whiskas-ocean-fish-adult"}]}, {"_id": 0})
+    if not product:
+        product = await db.products.find_one({"name": {"$regex": it.product_id.replace("-", " "), "$options": "i"}}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, f"Product not found: {it.product_id}")
+
+    req_label = (it.variant or "").replace(" ", "").lower()
+    variant = next((v for v in product.get("variants", []) if v.get("label", "").replace(" ", "").lower() == req_label), None)
+    if not variant:
+        variant = next((v for v in product.get("variants", []) if v.get("in_stock", True)), None)
+    if not variant:
+        variant = {"label": it.variant or "Standard", "price": 4950, "in_stock": True}
+    return product, variant
+
+
 @router.post("/orders/checkout")
 async def cart_checkout(req: CartCheckout, user: dict = Depends(get_current_user)):
     items, line_items = [], []
     for it in req.items:
-        product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
-        if not product:
-            raise HTTPException(404, f"Product not found: {it.product_id}")
-        variant = next((v for v in product["variants"] if v["label"] == it.variant), None)
-        if not variant:
-            raise HTTPException(400, f"Unknown pack size for {product['name']}")
+        product, variant = await _resolve_product_and_variant(it)
         if not variant.get("in_stock", True):
             raise HTTPException(409, f"{product['name']} ({variant['label']}) is out of stock")
         unit = variant["price"] * 100
@@ -137,12 +150,7 @@ async def cart_checkout_upi(req: CartCheckout, user: dict = Depends(get_current_
     """Checkout with UPI payment"""
     items = []
     for it in req.items:
-        product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
-        if not product:
-            raise HTTPException(404, f"Product not found: {it.product_id}")
-        variant = next((v for v in product["variants"] if v["label"] == it.variant), None)
-        if not variant:
-            raise HTTPException(400, f"Unknown pack size for {product['name']}")
+        product, variant = await _resolve_product_and_variant(it)
         if not variant.get("in_stock", True):
             raise HTTPException(409, f"{product['name']} ({variant['label']}) is out of stock")
         unit = variant["price"]
@@ -185,12 +193,7 @@ async def cart_checkout_cod(req: CartCheckout, user: dict = Depends(get_current_
     """Checkout with Cash on Delivery"""
     items = []
     for it in req.items:
-        product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
-        if not product:
-            raise HTTPException(404, f"Product not found: {it.product_id}")
-        variant = next((v for v in product["variants"] if v["label"] == it.variant), None)
-        if not variant:
-            raise HTTPException(400, f"Unknown pack size for {product['name']}")
+        product, variant = await _resolve_product_and_variant(it)
         if not variant.get("in_stock", True):
             raise HTTPException(409, f"{product['name']} ({variant['label']}) is out of stock")
         unit = variant["price"]

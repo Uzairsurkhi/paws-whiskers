@@ -10,12 +10,14 @@ import Home from "@/pages/Home";
 import Article from "@/pages/Article";
 import Product from "@/pages/Product";
 import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import Cart from "@/pages/Cart";
 import Orders from "@/pages/Orders";
 import Admin from "@/pages/admin/Admin";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import PaymentSuccess, { PaymentCancel } from "@/pages/PaymentSuccess";
 import UpiPayment from "@/pages/UpiPayment";
+import Profile from "@/pages/Profile";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 
@@ -82,8 +84,12 @@ function App() {
           <Route path="/guides/best-cat-food-india-2026" element={<Article />} />
           <Route path="/products/:id" element={<Product />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/register" element={<Signup />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/orders" element={<RequireAuth><Orders /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+          <Route path="/account" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/payment/success" element={<PaymentSuccess />} />

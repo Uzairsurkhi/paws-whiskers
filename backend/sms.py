@@ -52,7 +52,7 @@ def _national_in(to: str) -> str:
     return re.sub(r"\D", "", to)[-10:]
 
 
-def send_otp_sms(to: str, code: str):
+def send_otp_sms(to: str, code: str) -> dict:
     provider = sms_provider()
     if not provider:
         raise RuntimeError("No SMS provider is configured")
@@ -61,16 +61,22 @@ def send_otp_sms(to: str, code: str):
     e164_in = f"91{national}" if len(national) == 10 else to.lstrip("+")
 
     if provider == "twofactor":
-        _send_twofactor(e164_in, code)
+        receipt = _send_twofactor(e164_in, code)
     elif provider == "fast2sms":
-        _send_fast2sms(national, code)
+        receipt = _send_fast2sms(national, code)
     elif provider == "msg91":
-        _send_msg91(e164_in, code)
+        receipt = _send_msg91(e164_in, code)
     elif provider == "twilio":
-        _send_twilio(to, body)
+        receipt = _send_twilio(to, body)
     else:
         raise RuntimeError(f"Unknown SMS provider: {provider}")
-    logger.info("Sent login OTP via %s to %s", provider, to)
+    # A gateway acknowledgement is not the same as handset delivery.  Retain the
+    # provider receipt in server logs so an undelivered OTP can be traced in the
+    # provider dashboard without logging a customer's full mobile number.
+    receipt = receipt or {}
+    receipt["provider"] = provider
+    logger.info("OTP request accepted by %s (receipt=%s)", provider, receipt.get("request_id", "n/a"))
+    return receipt
 
 
 def _send_twofactor(mobile: str, code: str):
@@ -84,6 +90,7 @@ def _send_twofactor(mobile: str, code: str):
     payload = resp.json()
     if str(payload.get("Status", "")).lower() != "success":
         raise RuntimeError(payload.get("Details") or "2Factor rejected the SMS")
+    return {"request_id": str(payload.get("Details") or "")}
 
 
 def _send_fast2sms(national: str, code: str):
@@ -103,9 +110,23 @@ def _send_fast2sms(national: str, code: str):
     payload = resp.json()
     if payload.get("return") is False:
         raise RuntimeError(payload.get("message") or "Fast2SMS rejected the SMS")
+    return {"request_id": str(payload.get("request_id") or payload.get("message_id") or "")}
 
 
 def _send_msg91(mobile: str, code: str):
+    # The OTP template selected in MSG91 already has an approved sender ID.  Do
+    # not override it with a guessed value: on Indian routes that can pass the
+    # API request but subsequently fail DLT delivery.
+    sender = _env("MSG91_SENDER_ID")
+    body: dict = {
+        "template_id": _env("MSG91_TEMPLATE_ID"),
+        "mobile": mobile,
+        "otp": code,
+        "otp_length": 6,
+        "otp_expiry": OTP_TTL_MIN,
+    }
+    if sender:
+        body["sender"] = sender
     resp = httpx.post(
         "https://control.msg91.com/api/v5/otp",
         headers={
@@ -113,19 +134,16 @@ def _send_msg91(mobile: str, code: str):
             "Content-Type": "application/json",
             "Accept": "application/json",
         },
-        json={
-            "template_id": _env("MSG91_TEMPLATE_ID"),
-            "mobile": mobile,
-            "otp": code,
-            "otp_length": 6,
-            "otp_expiry": OTP_TTL_MIN,
-        },
+        json=body,
         timeout=20,
     )
     resp.raise_for_status()
     payload = resp.json()
-    if str(payload.get("type", "")).lower() == "error":
-        raise RuntimeError(payload.get("message") or "MSG91 rejected the SMS")
+    if str(payload.get("type", "")).lower() != "success":
+        raise RuntimeError(payload.get("message") or "MSG91 did not accept the OTP request")
+    # MSG91 returns its transaction reference in `message` for successful OTP
+    # requests. It is useful when checking OTP logs in the MSG91 dashboard.
+    return {"request_id": str(payload.get("message") or payload.get("request_id") or "")}
 
 
 def _send_twilio(to: str, body: str):
@@ -143,3 +161,5 @@ def _send_twilio(to: str, body: str):
         except Exception:
             detail = resp.text
         raise RuntimeError(detail or "Twilio rejected the SMS")
+    payload = resp.json()
+    return {"request_id": str(payload.get("sid") or "")}

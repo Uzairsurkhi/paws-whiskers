@@ -17,6 +17,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
 
 from database import db
+from mailer import send_otp_email
 from sms import OTP_TTL_MIN, is_production, send_otp_sms, sms_enabled, sms_provider
 
 logger = logging.getLogger(__name__)
@@ -31,13 +32,27 @@ bearer = HTTPBearer(auto_error=False)
 
 
 class PhoneRequest(BaseModel):
-    phone: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
 
 
 class VerifyRequest(BaseModel):
-    phone: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     code: str
     challenge: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
 
 
 class AdminLogin(BaseModel):
@@ -99,15 +114,26 @@ def make_challenge(phone: str, code: str) -> str:
     )
 
 
-async def _issue_session(phone: str, now: str):
-    user = await db.users.find_one({"phone": phone}, {"_id": 0})
-    role = "admin" if phone in ADMIN_PHONES else "customer"
-    if not user:
-        user = {"id": str(uuid4()), "phone": phone, "name": "", "email": None, "role": role, "created_at": now}
-        await db.users.insert_one({**user})
-    elif role == "admin" and user["role"] != "admin":
-        await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
-        user["role"] = "admin"
+async def _issue_session(identifier: str, channel: str, now: str):
+    if channel == "email":
+        user = await db.users.find_one({"email": identifier}, {"_id": 0})
+        admin_email = (os.environ.get("ADMIN_EMAIL") or "").strip().lower()
+        role = "admin" if (admin_email and identifier == admin_email) else "customer"
+        if not user:
+            user = {"id": str(uuid4()), "phone": None, "name": "", "email": identifier, "role": role, "created_at": now}
+            await db.users.insert_one({**user})
+        elif role == "admin" and user.get("role") != "admin":
+            await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
+            user["role"] = "admin"
+    else:
+        user = await db.users.find_one({"phone": identifier}, {"_id": 0})
+        role = "admin" if identifier in ADMIN_PHONES else "customer"
+        if not user:
+            user = {"id": str(uuid4()), "phone": identifier, "name": "", "email": None, "role": role, "created_at": now}
+            await db.users.insert_one({**user})
+        elif role == "admin" and user.get("role") != "admin":
+            await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
+            user["role"] = "admin"
     return {"token": issue_token(user), "user": public_user(user)}
 
 
@@ -132,6 +158,51 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
 
 @router.post("/request-otp")
 async def request_otp(req: PhoneRequest):
+    raw_email = (req.email or "").strip().lower() or ((req.phone or "").strip().lower() if "@" in (req.phone or "") else None)
+    if raw_email:
+        email = raw_email
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            raise HTTPException(400, "Please enter a valid email address.")
+        now = datetime.now(timezone.utc)
+        window = (now - timedelta(minutes=10)).isoformat()
+        recent = await db.otps.count_documents({
+            "$or": [{"identifier": email}, {"email": email}],
+            "created_at": {"$gte": window},
+        })
+        if recent >= OTP_MAX_PER_10MIN:
+            raise HTTPException(429, "Too many codes requested. Please wait 10 minutes and try again.")
+        code = f"{secrets.randbelow(10**6):06d}"
+        challenge = make_challenge(email, code)
+        await db.otps.update_many({
+            "$or": [{"identifier": email}, {"email": email}],
+            "used": False,
+        }, {"$set": {"used": True}})
+        await db.otps.insert_one({
+            "identifier": email,
+            "email": email,
+            "code_hash": hash_secret(code),
+            "attempts": 0,
+            "used": False,
+            "created_at": now.isoformat(),
+            "expires_at": (now + timedelta(minutes=OTP_TTL_MIN)).isoformat(),
+        })
+        try:
+            await send_otp_email(to=email, code=code, ttl_min=OTP_TTL_MIN)
+            logger.info("Sent login OTP via Email to %s", email)
+        except Exception as e:
+            logger.error("Failed to send OTP email to %s: %s", email, e)
+            raise HTTPException(502, "Couldn't send the email right now. Please try again.")
+        return {
+            "sent": True,
+            "email": email,
+            "identifier": email,
+            "channel": "email",
+            "challenge": challenge,
+            "expires_in": OTP_TTL_MIN * 60,
+        }
+
+    if not req.phone:
+        raise HTTPException(400, "Please provide an email or phone number.")
     phone = normalize_phone(req.phone)
     now = datetime.now(timezone.utc)
     window = (now - timedelta(minutes=10)).isoformat()
@@ -142,6 +213,7 @@ async def request_otp(req: PhoneRequest):
     challenge = make_challenge(phone, code)
     await db.otps.update_many({"phone": phone, "used": False}, {"$set": {"used": True}})
     await db.otps.insert_one({
+        "identifier": phone,
         "phone": phone,
         "code_hash": hash_secret(code),
         "attempts": 0,
@@ -155,24 +227,29 @@ async def request_otp(req: PhoneRequest):
         except Exception as e:
             logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
             raise HTTPException(502, "Couldn't send the SMS right now. Please try again.")
-        return {"sent": True, "phone": phone, "challenge": challenge, "dev_mode": False, "expires_in": OTP_TTL_MIN * 60}
-    if is_production():
-        logger.error("Login OTP requested but no SMS provider is configured")
-        raise HTTPException(503, "SMS login is not configured. Add an SMS API key on the server.")
-    logger.info("DEV OTP for %s: %s", phone, code)
-    return {
-        "sent": True,
-        "phone": phone,
-        "challenge": challenge,
-        "dev_mode": True,
-        "dev_otp": code,
-        "expires_in": OTP_TTL_MIN * 60,
-    }
+        return {
+            "sent": True,
+            "phone": phone,
+            "identifier": phone,
+            "channel": "phone",
+            "challenge": challenge,
+            "expires_in": OTP_TTL_MIN * 60,
+        }
+    raise HTTPException(503, "SMS service is not configured. Please use Email OTP.")
 
 
 @router.post("/verify-otp")
 async def verify_otp(req: VerifyRequest):
-    phone = normalize_phone(req.phone)
+    raw_email = (req.email or "").strip().lower() or ((req.phone or "").strip().lower() if "@" in (req.phone or "") else None)
+    if raw_email:
+        identifier = raw_email
+        channel = "email"
+    elif req.phone:
+        identifier = normalize_phone(req.phone)
+        channel = "phone"
+    else:
+        raise HTTPException(400, "Please provide an email or phone number.")
+
     code = req.code.strip()
     if not re.fullmatch(r"\d{6}", code):
         raise HTTPException(400, "Incorrect code. Please check and try again.")
@@ -185,18 +262,24 @@ async def verify_otp(req: VerifyRequest):
             raise HTTPException(400, "That code has expired — request a new one.")
         except jwt.PyJWTError:
             raise HTTPException(400, "No active code — request a new one.")
-        if payload.get("ph") != phone or not hmac.compare_digest(payload.get("ch", ""), _otp_digest(phone, code)):
+        if payload.get("ph") != identifier or not hmac.compare_digest(payload.get("ch", ""), _otp_digest(identifier, code)):
             raise HTTPException(400, "Incorrect code. Please check and try again.")
         jti = payload.get("jti")
         if jti:
             used = await db.otp_challenges.find_one({"jti": jti})
             if used:
                 raise HTTPException(400, "That code has already been used — request a new one.")
-            await db.otp_challenges.insert_one({"jti": jti, "phone": phone, "used_at": now})
-        await db.otps.update_many({"phone": phone, "used": False}, {"$set": {"used": True}})
-        return await _issue_session(phone, now)
+            await db.otp_challenges.insert_one({"jti": jti, "identifier": identifier, "used_at": now})
+        await db.otps.update_many({
+            "$or": [{"identifier": identifier}, {"phone": identifier}, {"email": identifier}],
+            "used": False
+        }, {"$set": {"used": True}})
+        return await _issue_session(identifier, channel, now)
 
-    otp = await db.otps.find_one({"phone": phone, "used": False}, sort=[("created_at", -1)])
+    otp = await db.otps.find_one({
+        "$or": [{"identifier": identifier}, {"phone": identifier}, {"email": identifier}],
+        "used": False
+    }, sort=[("created_at", -1)])
     if not otp:
         raise HTTPException(400, "No active code — request a new one.")
     if otp["expires_at"] < now:
@@ -208,7 +291,48 @@ async def verify_otp(req: VerifyRequest):
         await db.otps.update_one({"_id": otp["_id"]}, {"$inc": {"attempts": 1}})
         raise HTTPException(400, "Incorrect code. Please check and try again.")
     await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
-    return await _issue_session(phone, now)
+    return await _issue_session(identifier, channel, now)
+
+
+@router.post("/register")
+async def register(req: RegisterRequest):
+    email = req.email.strip().lower()
+    if len(req.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters.")
+    
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(400, "An account with this email already exists. Please log in.")
+    
+    phone = None
+    if req.phone and req.phone.strip():
+        phone = normalize_phone(req.phone)
+        phone_existing = await db.users.find_one({"phone": phone})
+        if phone_existing:
+            raise HTTPException(400, "An account with this phone number already exists.")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    user = {
+        "id": str(uuid4()),
+        "name": req.name.strip(),
+        "email": email,
+        "phone": phone,
+        "role": "customer",
+        "password_hash": hash_secret(req.password),
+        "created_at": now,
+    }
+    await db.users.insert_one({**user})
+    logger.info("Registered new customer %s (%s)", req.name, email)
+    return {"token": issue_token(user), "user": public_user(user)}
+
+
+@router.post("/login")
+async def login_with_password(req: LoginRequest):
+    email = req.email.strip().lower()
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user or not user.get("password_hash") or not check_secret(req.password, user["password_hash"]):
+        raise HTTPException(401, "Invalid email or password.")
+    return {"token": issue_token(user), "user": public_user(user)}
 
 
 @router.post("/admin-login")

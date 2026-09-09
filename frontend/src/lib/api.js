@@ -20,23 +20,34 @@ export const api = {
   search: (q) => data(http.get("/search", { params: { q } })),
   newsletter: (email) => data(http.post("/newsletter", { email })),
 
-  requestOtp: (phone) => data(http.post("/auth/request-otp", { phone })),
-  verifyOtp: (phone, code, challenge) => data(http.post("/auth/verify-otp", { phone, code, challenge })),
+  requestOtp: (target) => {
+    const payload = typeof target === "object" ? target : (String(target).includes("@") ? { email: target } : { phone: target });
+    return data(http.post("/auth/request-otp", payload));
+  },
+  verifyOtp: (target, code, challenge) => {
+    const base = typeof target === "object" ? target : (String(target).includes("@") ? { email: target } : { phone: target });
+    return data(http.post("/auth/verify-otp", { ...base, code, challenge }));
+  },
+  register: (body) => data(http.post("/auth/register", body)),
+  login: (body) => data(http.post("/auth/login", body)),
   adminLogin: (email, password) => data(http.post("/auth/admin-login", { email, password })),
   me: () => data(http.get("/auth/me")),
   updateMe: (body) => data(http.patch("/auth/me", body)),
 
   cartCheckout: (body) => data(http.post("/orders/checkout", body)),
   cartCheckoutUpi: (body) => data(http.post("/orders/checkout-upi", body)),
+  cartCheckoutCod: (body) => data(http.post("/orders/checkout-cod", body)),
   verifyUpiPayment: (orderId, upiTxnId) => data(http.post(`/orders/${orderId}/verify-upi`, { upi_txn_id: upiTxnId })),
   myOrders: () => data(http.get("/orders")),
+  getOrder: (orderId) => data(http.get(`/orders/${orderId}`)),
+  cancelOrder: (orderId) => data(http.post(`/orders/${orderId}/cancel`)),
   paymentStatus: (sessionId) => data(http.get(`/payments/status/${sessionId}`)),
 
   admin: {
     stats: () => data(http.get("/admin/stats")),
     orders: () => data(http.get("/admin/orders")),
     updateOrder: (id, fulfillment_status) => data(http.patch(`/admin/orders/${id}`, { fulfillment_status })),
-    resendEmail: (id) => data(http.post(`/admin/orders/${id}/resend-email`)),
+    resendEmail: (id, kind) => data(http.post(`/admin/orders/${id}/resend-email`, null, { params: kind ? { kind } : {} })),
     products: () => data(http.get("/admin/products")),
     updateProduct: (id, body) => data(http.put(`/admin/products/${id}`, body)),
     emails: () => data(http.get("/admin/emails")),

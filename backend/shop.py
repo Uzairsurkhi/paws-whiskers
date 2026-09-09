@@ -11,7 +11,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from auth import get_current_user, require_admin
 from database import db
-from mailer import send_order_confirmation
+from mailer import send_order_confirmation, send_order_status_email
 from stripe_client import create_checkout_session
 from upi_payment import generate_upi_link
 
@@ -180,6 +180,57 @@ async def cart_checkout_upi(req: CartCheckout, user: dict = Depends(get_current_
     return {"upi_link": upi_link, "order_id": order_id, "amount": amount_inr}
 
 
+@router.post("/orders/checkout-cod")
+async def cart_checkout_cod(req: CartCheckout, user: dict = Depends(get_current_user)):
+    """Checkout with Cash on Delivery"""
+    items = []
+    for it in req.items:
+        product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
+        if not product:
+            raise HTTPException(404, f"Product not found: {it.product_id}")
+        variant = next((v for v in product["variants"] if v["label"] == it.variant), None)
+        if not variant:
+            raise HTTPException(400, f"Unknown pack size for {product['name']}")
+        if not variant.get("in_stock", True):
+            raise HTTPException(409, f"{product['name']} ({variant['label']}) is out of stock")
+        unit = variant["price"]
+        items.append({
+            "product_id": product["id"], "name": product["name"], "brand": product["brand"],
+            "image": product["image"], "variant": variant["label"], "unit_price": unit, "quantity": it.quantity,
+        })
+
+    order_id = str(uuid4())
+    subtotal = sum(i["unit_price"] * i["quantity"] for i in items)
+    now = _now()
+    order_doc = {
+        "id": order_id, "user_id": user["id"], "user_phone": user.get("phone"),
+        "items": items, "subtotal": subtotal, "currency": "inr",
+        "shipping": req.shipping.model_dump(),
+        "status": "confirmed", "payment_status": "pending_cod", "fulfillment_status": "new",
+        "payment_method": "cod",
+        "session_id": order_id, "origin_url": req.origin_url, "email_sent": False,
+        "created_at": now, "updated_at": now,
+    }
+    await db.orders.insert_one(order_doc)
+    await db.payment_transactions.insert_one({
+        "session_id": order_id, "kind": "order", "order_id": order_id, "user_id": user["id"],
+        "amount": subtotal, "currency": "inr", "payment_method": "cod",
+        "status": "completed", "payment_status": "pending_cod",
+        "created_at": now, "updated_at": now,
+    })
+    if not user.get("email"):
+        await db.users.update_one({"id": user["id"]}, {"$set": {"email": req.shipping.email, "name": user.get("name") or req.shipping.name}})
+
+    try:
+        result = await send_order_confirmation(order_doc, req.origin_url)
+        status = result.get("status", "sent")
+        await db.orders.update_one({"id": order_id}, {"$set": {"email_sent": (status == "sent"), "email_status": status}})
+    except Exception as e:
+        logger.error("Failed to send COD order confirmation: %s", e)
+
+    return {"order_id": order_id, "status": "confirmed"}
+
+
 @router.post("/orders/{order_id}/verify-upi")
 async def verify_upi_payment(order_id: str, req: UpiVerification, user: dict = Depends(get_current_user)):
     """User submits UPI transaction ID after payment"""
@@ -219,22 +270,23 @@ async def mark_order_paid(session_id: str, payment_intent: str | None = None):
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "confirmed", "payment_status": "paid", "stripe_payment_intent_id": payment_intent, "updated_at": now}},
     )
-    order = await db.orders.find_one_and_update(
-        {"session_id": session_id, "payment_status": "paid", "email_sent": False},
-        {"$set": {"email_sent": True}},
-        projection={"_id": 0},
+    order = await db.orders.find_one(
+        {"session_id": session_id, "payment_status": "paid", "$or": [{"email_sent": False}, {"email_status": {"$ne": "sent"}}]},
+        {"_id": 0},
     )
     if order:
         try:
             result = await send_order_confirmation(order, order.get("origin_url", ""))
-            await db.orders.update_one({"id": order["id"]}, {"$set": {"email_status": result["status"]}})
+            status = result.get("status", "sent")
+            await db.orders.update_one({"id": order["id"]}, {"$set": {"email_sent": (status == "sent"), "email_status": status}})
+            logger.info("Order confirmation email sent for order %s to %s", order["id"], order.get("shipping", {}).get("email"))
         except Exception as e:
-            logger.error("Order email failed: %s", e)
-            await db.orders.update_one({"id": order["id"]}, {"$set": {"email_status": "failed"}})
+            logger.error("Order email failed for %s: %s", order["id"], e)
+            await db.orders.update_one({"id": order["id"]}, {"$set": {"email_sent": False, "email_status": "failed"}})
 
 
 async def order_by_session(session_id: str) -> dict | None:
-    return await db.orders.find_one({"session_id": session_id}, {"_id": 0, "origin_url": 0})
+    return await db.orders.find_one({"session_id": session_id}, {"_id": 0})
 
 
 @router.get("/orders")
@@ -272,20 +324,86 @@ async def admin_orders(_: dict = Depends(require_admin)):
 async def admin_update_order(order_id: str, req: FulfillmentUpdate, _: dict = Depends(require_admin)):
     if req.fulfillment_status not in FULFILLMENT:
         raise HTTPException(400, f"Status must be one of {', '.join(FULFILLMENT)}")
-    res = await db.orders.update_one({"id": order_id}, {"$set": {"fulfillment_status": req.fulfillment_status, "updated_at": _now()}})
-    if not res.matched_count:
+    
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
         raise HTTPException(404, "Order not found")
+    
+    old_status = order.get("fulfillment_status")
+    now = _now()
+    updates = {"fulfillment_status": req.fulfillment_status, "updated_at": now}
+    if req.fulfillment_status == "cancelled":
+        updates["status"] = "cancelled"
+    
+    await db.orders.update_one({"id": order_id}, {"$set": updates})
+    
+    # Trigger notification email if status changed to packed, shipped, delivered, or cancelled
+    if req.fulfillment_status != old_status and req.fulfillment_status in ("packed", "shipped", "delivered", "cancelled"):
+        order["fulfillment_status"] = req.fulfillment_status
+        try:
+            res = await send_order_status_email(order, req.fulfillment_status, order.get("origin_url", ""))
+            notification_entry = {
+                "status": req.fulfillment_status,
+                "email_status": res.get("status", "sent"),
+                "sent_at": now,
+            }
+            await db.orders.update_one({"id": order_id}, {"$push": {"status_notifications": notification_entry}})
+            logger.info("Sent %s notification for order %s to %s", req.fulfillment_status, order_id, order.get("shipping", {}).get("email"))
+        except Exception as e:
+            logger.error("Failed to send %s email for order %s: %s", req.fulfillment_status, order_id, e)
+
+    return await db.orders.find_one({"id": order_id}, {"_id": 0, "origin_url": 0})
+
+
+@router.post("/orders/{order_id}/cancel")
+async def cancel_order(order_id: str, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    
+    current_status = order.get("fulfillment_status", "new")
+    if current_status in ("shipped", "delivered", "cancelled"):
+        raise HTTPException(400, f"Order cannot be cancelled because it is already {current_status}")
+    
+    now = _now()
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"fulfillment_status": "cancelled", "status": "cancelled", "updated_at": now}}
+    )
+    order["fulfillment_status"] = "cancelled"
+    order["status"] = "cancelled"
+    
+    try:
+        res = await send_order_status_email(order, "cancelled", order.get("origin_url", ""))
+        notification_entry = {
+            "status": "cancelled",
+            "email_status": res.get("status", "sent"),
+            "sent_at": now,
+            "cancelled_by": "customer"
+        }
+        await db.orders.update_one({"id": order_id}, {"$push": {"status_notifications": notification_entry}})
+        logger.info("Sent cancellation notification for order %s to %s", order_id, order.get("shipping", {}).get("email"))
+    except Exception as e:
+        logger.error("Failed to send cancellation email for order %s: %s", order_id, e)
+        
     return await db.orders.find_one({"id": order_id}, {"_id": 0, "origin_url": 0})
 
 
 @router.post("/admin/orders/{order_id}/resend-email")
-async def admin_resend_email(order_id: str, _: dict = Depends(require_admin)):
-    order = await db.orders.find_one({"id": order_id, "payment_status": "paid"}, {"_id": 0})
+async def admin_resend_email(order_id: str, kind: Optional[str] = None, _: dict = Depends(require_admin)):
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
-        raise HTTPException(404, "Paid order not found")
-    result = await send_order_confirmation(order, order.get("origin_url", ""))
-    await db.orders.update_one({"id": order_id}, {"$set": {"email_sent": True, "email_status": result["status"]}})
-    return {"status": result["status"], "error": result.get("error")}
+        raise HTTPException(404, "Order not found")
+    
+    origin = order.get("origin_url", "")
+    if kind and kind in ("packed", "shipped", "delivered", "cancelled"):
+        result = await send_order_status_email(order, kind, origin)
+    else:
+        result = await send_order_confirmation(order, origin)
+        status = result.get("status", "sent")
+        await db.orders.update_one({"id": order_id}, {"$set": {"email_sent": (status == "sent"), "email_status": status}})
+    
+    return {"status": result.get("status", "sent"), "error": result.get("error")}
 
 
 @router.get("/admin/products")

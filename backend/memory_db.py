@@ -147,6 +147,18 @@ class MemoryCollection:
     async def create_index(self, *args, **kwargs):
         return None
 
+    async def delete_one(self, query):
+        for i, doc in enumerate(self._docs):
+            if _match(doc, query):
+                del self._docs[i]
+                return type("DeleteResult", (), {"deleted_count": 1})()
+        return type("DeleteResult", (), {"deleted_count": 0})()
+
+    async def delete_many(self, query):
+        initial = len(self._docs)
+        self._docs = [d for d in self._docs if not _match(d, query)]
+        return type("DeleteResult", (), {"deleted_count": initial - len(self._docs)})()
+
     @staticmethod
     def _apply(doc: dict, update: dict):
         if "$set" in update:
@@ -160,6 +172,11 @@ class MemoryCollection:
         if "$inc" in update:
             for k, v in update["$inc"].items():
                 doc[k] = (doc.get(k) or 0) + v
+        if "$push" in update:
+            for k, v in update["$push"].items():
+                if k not in doc or not isinstance(doc[k], list):
+                    doc[k] = []
+                doc[k].append(deepcopy(v))
 
 
 class MemoryDatabase:

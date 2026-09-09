@@ -5,6 +5,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import stripe
 from fastapi import FastAPI, APIRouter, Request, HTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -15,6 +18,7 @@ from stripe_client import create_checkout_session
 from auth import router as auth_router, seed_admin
 from sms import sms_enabled, sms_provider
 from shop import router as shop_router, mark_order_paid, order_by_session, sync_stripe_payment
+from mailer import send_order_confirmation
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -564,7 +568,16 @@ async def get_payment_status(session_id: str):
         "kind": record.get("kind", "support"),
     }
     if out["kind"] == "order":
-        out["order"] = await order_by_session(session_id)
+        order = await order_by_session(session_id)
+        out["order"] = order
+        if order and order.get("payment_status") == "paid" and (not order.get("email_sent") or order.get("email_status") != "sent"):
+            try:
+                result = await send_order_confirmation(order, order.get("origin_url", ""))
+                status = result.get("status", "sent")
+                await db.orders.update_one({"id": order["id"]}, {"$set": {"email_sent": (status == "sent"), "email_status": status}})
+                logger.info("Sent confirmation email for order %s to %s", order["id"], order.get("shipping", {}).get("email"))
+            except Exception as e:
+                logger.error("Failed to send order email in payment_status: %s", e)
     return out
 
 

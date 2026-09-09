@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PawPrint, Search, Menu, X } from "lucide-react";
 import { HeaderActions } from "./HeaderActions";
+import { DeliveryLocation } from "./DeliveryLocation";
 
 export const Header = ({ onSearch }) => {
   const [open, setOpen] = useState(false);
@@ -56,6 +57,7 @@ export const Header = ({ onSearch }) => {
             <span className="hidden xl:inline">Search picks &amp; guides</span>
             <kbd className="font-mono-accent hidden rounded-md border border-stone-200 bg-stone-50 px-1.5 py-0.5 text-[10px] font-bold text-stone-500 xl:inline">/</kbd>
           </button>
+          <DeliveryLocation />
           <HeaderActions />
           <button data-testid="mobile-menu-button" onClick={() => setOpen(!open)} className="rounded-full p-2 text-stone-700 lg:hidden">
             {open ? <X size={22} /> : <Menu size={22} />}

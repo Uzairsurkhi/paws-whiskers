@@ -9,11 +9,23 @@ const inr = (paise) => `₹ ${(paise / 100).toLocaleString("en-IN")}`;
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
+  const orderId = params.get("order_id");
   const [state, setState] = useState("polling");
   const [result, setResult] = useState(null);
   const { clear } = useCart();
 
   useEffect(() => {
+    if (orderId) {
+      api.getOrder(orderId)
+        .then((order) => {
+          setResult({ kind: "order", order, payment_status: order.payment_status });
+          setState("paid");
+          clear();
+        })
+        .catch(() => setState("error"));
+      return;
+    }
+
     if (!sessionId) {
       setState("error");
       return;
@@ -34,7 +46,7 @@ export default function PaymentSuccess() {
       else setState("timeout");
     };
     tick();
-  }, [sessionId, clear]);
+  }, [sessionId, orderId, clear]);
 
   const order = result?.order;
 
@@ -69,7 +81,14 @@ export default function PaymentSuccess() {
                 ))}
                 <li className="flex justify-between px-5 py-3 font-bold text-stone-900"><span>Subtotal</span><span className="font-mono-accent">{inr(order.subtotal)}</span></li>
               </ul>
-              <p className="mt-4 flex items-center justify-center gap-2 text-sm text-stone-500"><Mail size={14} /> Confirmation sent to {order.shipping.email}</p>
+              <p className="mt-4 flex items-center justify-center gap-2 text-sm text-stone-500">
+                <Mail size={14} />
+                {order.email_status === "sent"
+                  ? <>Confirmation sent to {order.shipping.email}</>
+                  : order.email_status === "failed"
+                  ? <>Couldn't send confirmation email — please check your orders page.</>
+                  : <>Confirmation email to {order.shipping.email} is on its way.</>}
+              </p>
             </>
           )}
           <div className="mt-8 flex flex-wrap justify-center gap-3">

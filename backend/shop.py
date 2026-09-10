@@ -332,13 +332,23 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
 
 @router.get("/admin/stats")
 async def admin_stats(_: dict = Depends(require_admin)):
-    paid = await db.orders.find({"payment_status": "paid"}, {"subtotal": 1}).to_list(10000)
+    orders = await db.orders.find({}, {"_id": 0, "subtotal": 1, "payment_status": 1, "fulfillment_status": 1, "status": 1}).to_list(10000)
+    billable = [o for o in orders if o.get("payment_status") in ("paid", "pending_cod", "pending_verification") and o.get("status") != "cancelled"]
+    pending = [
+        o for o in orders
+        if o.get("fulfillment_status") in ("new", "packed")
+        and o.get("status") not in ("cancelled",)
+        and o.get("payment_status") in ("paid", "pending_cod", "pending_verification", "confirmed")
+    ]
+    customers = await db.users.count_documents({"role": {"$ne": "admin"}})
+    if not customers:
+        customers = await db.users.count_documents({"role": "customer"})
     return {
-        "orders_total": await db.orders.count_documents({}),
-        "orders_paid": len(paid),
-        "revenue_paise": sum(o["subtotal"] for o in paid),
-        "customers": await db.users.count_documents({"role": "customer"}),
-        "pending_fulfillment": await db.orders.count_documents({"payment_status": "paid", "fulfillment_status": {"$in": ["new", "packed"]}}),
+        "orders_total": len(orders),
+        "orders_paid": len(billable),
+        "revenue_paise": sum(o.get("subtotal") or 0 for o in billable),
+        "customers": customers,
+        "pending_fulfillment": len(pending),
     }
 
 

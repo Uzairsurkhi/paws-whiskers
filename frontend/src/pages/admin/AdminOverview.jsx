@@ -15,10 +15,18 @@ import {
   Inbox,
 } from "lucide-react";
 
-export function AdminOverview({ stats, onNavigate }) {
+const inrPaise = (n) => `₹ ${Math.round(Number(n || 0) / 100).toLocaleString("en-IN")}`;
+
+export function AdminOverview({ stats, orders = [], onNavigate }) {
   const [period, setPeriod] = useState("Last 30 days");
 
   const dates = ["Aug 10", "Aug 15", "Aug 20", "Aug 25", "Aug 30", "Sep 5"];
+  const revenue = stats?.revenue_paise || 0;
+  const orderCount = stats?.orders_total || 0;
+  const toFulfil = stats?.pending_fulfillment || 0;
+  const customerCount = stats?.customers || 0;
+  const recent = (orders || []).slice(0, 6);
+  const avgOrder = orderCount ? Math.round(revenue / orderCount) : 0;
 
   const categories = [
     { name: "Dog Food", emoji: "🐶", orders: "0 orders", pct: 0 },
@@ -105,7 +113,7 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Revenue (Paid)</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              ₹0
+              {inrPaise(revenue)}
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
               <span>0% vs last month</span>
@@ -135,7 +143,7 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Total Orders</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              0
+              {orderCount}
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
               <span>0% vs last month</span>
@@ -165,7 +173,7 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">To Fulfil</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              0
+              {toFulfil}
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
               <span>0% vs last month</span>
@@ -195,7 +203,7 @@ export function AdminOverview({ stats, onNavigate }) {
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Customers</p>
             <p className="font-display mt-1 text-2xl font-black tracking-tight text-stone-900">
-              0
+              {customerCount}
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-stone-400">
               <span>0% vs last month</span>
@@ -268,15 +276,15 @@ export function AdminOverview({ stats, onNavigate }) {
             {/* Right Summary Column */}
             <div className="flex flex-col justify-center space-y-5 rounded-2xl bg-stone-50/70 p-4 border border-stone-100">
               <div>
-                <p className="font-display text-2xl font-black text-stone-900">₹0</p>
+                <p className="font-display text-2xl font-black text-stone-900">{inrPaise(revenue)}</p>
                 <p className="text-xs font-semibold text-stone-500">Total Revenue</p>
               </div>
               <div className="border-t border-stone-200/60 pt-3">
-                <p className="font-display text-2xl font-black text-stone-900">0</p>
+                <p className="font-display text-2xl font-black text-stone-900">{orderCount}</p>
                 <p className="text-xs font-semibold text-stone-500">Total Orders</p>
               </div>
               <div className="border-t border-stone-200/60 pt-3">
-                <p className="font-display text-2xl font-black text-stone-900">₹0</p>
+                <p className="font-display text-2xl font-black text-stone-900">{inrPaise(avgOrder)}</p>
                 <p className="text-xs font-semibold text-stone-500">Average Order Value</p>
               </div>
             </div>
@@ -306,7 +314,7 @@ export function AdminOverview({ stats, onNavigate }) {
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                     <AlertTriangle size={18} />
                   </div>
-                  <span className="text-xs font-bold text-stone-800">0 orders awaiting fulfilment</span>
+                  <span className="text-xs font-bold text-stone-800">{toFulfil} orders awaiting fulfilment</span>
                 </div>
                 <ChevronRight size={16} className="text-stone-400" />
               </button>
@@ -369,6 +377,7 @@ export function AdminOverview({ stats, onNavigate }) {
             </button>
           </div>
 
+          {recent.length === 0 ? (
           <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 p-10 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-[#EA580C]">
               <Inbox size={24} />
@@ -378,6 +387,24 @@ export function AdminOverview({ stats, onNavigate }) {
               Customer orders will appear here automatically as soon as they complete checkout.
             </p>
           </div>
+          ) : (
+            <div className="mt-5 divide-y divide-stone-100">
+              {recent.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => onNavigate("orders")}
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left hover:bg-stone-50/80"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-stone-900">#{(o.id || "").slice(0, 8).toUpperCase()} · {o.shipping?.name || "Customer"}</p>
+                    <p className="text-xs text-stone-500 capitalize">{o.payment_method || o.payment_status} · {o.fulfillment_status}</p>
+                  </div>
+                  <span className="font-mono-accent text-sm font-bold text-stone-800">{inrPaise(o.subtotal)}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Top Selling Categories */}
@@ -442,7 +469,7 @@ export function AdminOverview({ stats, onNavigate }) {
           </div>
 
           <div className="mt-4 flex items-baseline gap-3">
-            <span className="font-display text-3xl font-black text-stone-900">0</span>
+            <span className="font-display text-3xl font-black text-stone-900">{customerCount}</span>
             <span className="text-xs font-medium text-stone-400">0% vs last month</span>
           </div>
           <p className="text-xs text-stone-400">New verified customer registrations</p>

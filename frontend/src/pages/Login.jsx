@@ -38,13 +38,18 @@ export default function Login() {
 
   const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
   const isValidPhone = (val) => val.replace(/\D/g, "").length >= 10;
+  const isValidLoginIdentifier = (val) => isValidEmail(val) || isValidPhone(val);
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
     setBusy(true);
     try {
-      const res = await api.login({ email: email.trim().toLowerCase(), password });
+      const identifier = email.trim();
+      const res = await api.login({
+        ...(isValidEmail(identifier) ? { email: identifier.toLowerCase() } : { username: identifier }),
+        password,
+      });
       login(res);
       toast.success("Welcome back!");
       navigate(next, { replace: true });
@@ -159,19 +164,19 @@ export default function Login() {
                 </span>
                 <div>
                   <h2 className="font-display text-2xl font-bold tracking-tight text-stone-900">Log in with password</h2>
-                  <p className="mt-1 text-sm text-stone-500">Enter your registered email and password.</p>
+                  <p className="mt-1 text-sm text-stone-500">Enter your registered email or mobile number and password.</p>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-stone-600">Email Address</label>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-stone-600">Email or Mobile Number</label>
                   <input
                     data-testid="login-email-input"
-                    type="email"
+                    type="text"
                     inputMode="email"
-                    autoComplete="email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="name@example.com or 98765 43210"
                     className={field}
                     required
                   />
@@ -194,7 +199,7 @@ export default function Login() {
                 <button
                   data-testid="login-submit-button"
                   type="submit"
-                  disabled={busy || !isValidEmail(email) || !password}
+                  disabled={busy || !isValidLoginIdentifier(email) || !password}
                   className={primary}
                 >
                   {busy ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}

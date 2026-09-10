@@ -292,6 +292,38 @@ def otp_email_html(code: str, ttl_min: int = 5) -> str:
     )
 
 
+def welcome_email_html(name: str, origin: str = "") -> str:
+    first = escape((name or "there").split(" ")[0] or "there")
+    prod_origin = os.environ.get("PRODUCTION_URL") or "https://pawsandwhiskers.in"
+    base = origin.rstrip("/") if (origin and origin.startswith("https://")) else prod_origin.rstrip("/")
+    login_url = f"{base}/login"
+    shop_url = f"{base}/"
+    return (
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF7F2;padding:32px 0">'
+        '<tr><td align="center"><table role="presentation" width="560" cellpadding="0" cellspacing="0" '
+        'style="background:#fff;border-radius:16px;padding:32px;font-family:Arial,sans-serif;color:#1C1917">'
+        f'<tr><td><p style="margin:0;font-size:12px;letter-spacing:2px;color:#EA580C;font-weight:bold">{escape(EMAIL_FROM_NAME).upper()}</p>'
+        f'<h1 style="margin:12px 0 8px;font-size:26px">You\'re in, {first}!</h1>'
+        '<p style="margin:0 0 20px;color:#555">Your Paws &amp; Whiskers account was created successfully. You can now track orders, save addresses, and check out faster.</p>'
+        f'<p style="margin:24px 0 0"><a href="{escape(shop_url)}" style="background:#EA580C;color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:bold;display:inline-block">Start shopping</a></p>'
+        f'<p style="margin:16px 0 0;font-size:13px;color:#777">Next time, log in at <a href="{escape(login_url)}" style="color:#EA580C">{escape(login_url)}</a> with the same email and password.</p>'
+        f'<p style="margin:28px 0 0;font-size:12px;color:#888">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password or card details by email.</p>'
+        '</td></tr></table></td></tr></table>'
+    )
+
+
+async def send_welcome_email(to: str, name: str = "", origin: str = "") -> dict:
+    if not to:
+        return {"status": "skipped", "error": "No recipient email"}
+    return await send_email(
+        to=to,
+        subject=f"Welcome to {EMAIL_FROM_NAME} — you're signed in",
+        html=welcome_email_html(name, origin),
+        kind="welcome",
+        ref=to,
+    )
+
+
 async def send_otp_email(to: str, code: str, ttl_min: int = 5) -> dict:
     res = await send_email(
         to=to,

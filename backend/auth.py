@@ -17,7 +17,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
 
 from database import db
-from mailer import send_otp_email
+from mailer import send_otp_email, send_welcome_email
 from sms import OTP_TTL_MIN, is_production, send_otp_sms, sms_enabled, sms_provider
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,8 @@ class VerifyRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None
+    username: Optional[str] = None
     password: str
 
 
@@ -81,7 +82,12 @@ def hash_secret(value: str) -> str:
 
 
 def check_secret(value: str, hashed: str) -> bool:
-    return bcrypt.checkpw(value.encode(), hashed.encode())
+    if not value or not hashed:
+        return False
+    try:
+        return bcrypt.checkpw(value.encode(), hashed.encode() if isinstance(hashed, str) else hashed)
+    except (ValueError, TypeError):
+        return False
 
 
 def issue_token(user: dict) -> str:
@@ -122,6 +128,10 @@ async def _issue_session(identifier: str, channel: str, now: str):
         if not user:
             user = {"id": str(uuid4()), "phone": None, "name": "", "email": identifier, "role": role, "created_at": now}
             await db.users.insert_one({**user})
+            try:
+                await send_welcome_email(identifier, user.get("name") or "", os.environ.get("PRODUCTION_URL") or "")
+            except Exception as e:
+                logger.error("Welcome email failed for %s: %s", identifier, e)
         elif role == "admin" and user.get("role") != "admin":
             await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
             user["role"] = "admin"
@@ -294,52 +304,92 @@ async def verify_otp(req: VerifyRequest):
     return await _issue_session(identifier, channel, now)
 
 
+async def _find_user_by_login(identifier: str):
+    ident = (identifier or "").strip()
+    if not ident:
+        return None
+    email = ident.lower()
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if user:
+        return user
+    try:
+        phone = normalize_phone(ident)
+    except HTTPException:
+        return None
+    return await db.users.find_one({"phone": phone}, {"_id": 0})
+
+
 @router.post("/register")
 async def register(req: RegisterRequest):
     email = req.email.strip().lower()
     if len(req.password) < 6:
         raise HTTPException(400, "Password must be at least 6 characters.")
-    
-    existing = await db.users.find_one({"email": email})
-    if existing:
-        raise HTTPException(400, "An account with this email already exists. Please log in.")
-    
+
     phone = None
     if req.phone and req.phone.strip():
         phone = normalize_phone(req.phone)
-        phone_existing = await db.users.find_one({"phone": phone})
-        if phone_existing:
-            raise HTTPException(400, "An account with this phone number already exists.")
-    
+        phone_existing = await db.users.find_one({"phone": phone}, {"_id": 0})
+        if phone_existing and (phone_existing.get("email") or "").lower() != email:
+            raise HTTPException(400, "An account with this phone number already exists. Please log in.")
+
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
     now = datetime.now(timezone.utc).isoformat()
-    user = {
-        "id": str(uuid4()),
-        "name": req.name.strip(),
-        "email": email,
-        "phone": phone,
-        "role": "customer",
-        "password_hash": hash_secret(req.password),
-        "created_at": now,
-    }
-    await db.users.insert_one({**user})
-    logger.info("Registered new customer %s (%s)", req.name, email)
+    origin = os.environ.get("PRODUCTION_URL") or ""
+
+    if existing:
+        if existing.get("password_hash"):
+            raise HTTPException(400, "An account with this email already exists. Please log in.")
+        updates = {
+            "password_hash": hash_secret(req.password),
+            "name": req.name.strip() or existing.get("name") or "",
+        }
+        if phone and not existing.get("phone"):
+            updates["phone"] = phone
+        await db.users.update_one({"id": existing["id"]}, {"$set": updates})
+        user = {**existing, **updates}
+        logger.info("Attached password to existing account %s", email)
+    else:
+        user = {
+            "id": str(uuid4()),
+            "name": req.name.strip(),
+            "email": email,
+            "phone": phone,
+            "role": "customer",
+            "password_hash": hash_secret(req.password),
+            "created_at": now,
+        }
+        await db.users.insert_one({**user})
+        logger.info("Registered new customer %s (%s)", req.name, email)
+
+    try:
+        await send_welcome_email(email, user.get("name") or "", origin)
+    except Exception as e:
+        logger.error("Welcome email failed for %s: %s", email, e)
     return {"token": issue_token(user), "user": public_user(user)}
 
 
 @router.post("/login")
 async def login_with_password(req: LoginRequest):
-    email = req.email.strip().lower()
-    user = await db.users.find_one({"email": email}, {"_id": 0})
-    if not user or not user.get("password_hash") or not check_secret(req.password, user["password_hash"]):
+    identifier = (req.email or req.username or "").strip()
+    if not identifier:
+        raise HTTPException(400, "Enter your email or mobile number.")
+    user = await _find_user_by_login(identifier)
+    if not user:
+        raise HTTPException(401, "Invalid email or password.")
+    if not user.get("password_hash"):
+        raise HTTPException(401, "This account does not have a password yet. Create one on the sign-up page with the same email, or log in with a one-time code.")
+    if not check_secret(req.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password.")
     return {"token": issue_token(user), "user": public_user(user)}
 
 
 @router.post("/admin-login")
 async def admin_login(req: AdminLogin):
-    user = await db.users.find_one({"email": req.email.lower(), "role": "admin"}, {"_id": 0})
+    user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0})
     if not user or not user.get("password_hash") or not check_secret(req.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password.")
+    if user.get("role") != "admin":
+        raise HTTPException(403, "This is a customer account. Please log in from the store login page.")
     return {"token": issue_token(user), "user": public_user(user)}
 
 
@@ -363,8 +413,13 @@ async def seed_admin():
     password = os.environ.get("ADMIN_PASSWORD", "")
     if not email or not password:
         return
-    existing = await db.users.find_one({"email": email})
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
     if existing:
+        await db.users.update_one(
+            {"id": existing["id"]},
+            {"$set": {"role": "admin", "password_hash": hash_secret(password), "name": existing.get("name") or "Admin"}},
+        )
+        logger.info("Synced store admin login for %s", email)
         return
     await db.users.insert_one({
         "id": str(uuid4()),

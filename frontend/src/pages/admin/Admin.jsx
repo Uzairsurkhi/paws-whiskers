@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -49,16 +49,16 @@ export default function Admin() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const loadDashboard = () => {
+  const loadDashboard = useCallback(() => {
     if (isAdmin) {
       api.admin.stats().then(setStats).catch(() => {});
       api.admin.orders().then(setRecentOrders).catch(() => setRecentOrders([]));
     }
-  };
+  }, [isAdmin]);
 
   useEffect(() => {
     loadDashboard();
-  }, [isAdmin, tab]);
+  }, [loadDashboard, tab]);
 
   if (!ready) {
     return (

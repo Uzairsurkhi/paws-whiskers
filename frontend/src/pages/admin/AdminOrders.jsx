@@ -20,7 +20,12 @@ export const AdminOrders = () => {
     try {
       const updated = await api.admin.updateOrder(id, status);
       setOrders((os) => os.map((o) => (o.id === id ? updated : o)));
-      toast.success(`Marked as ${status} · customer notification sent`);
+      const emailStatus = updated.status_notifications?.slice(-1)[0]?.email_status;
+      toast[emailStatus === "sent" ? "success" : "warning"](
+        emailStatus === "sent"
+          ? `Marked as ${status} · customer email sent`
+          : `Marked as ${status} · customer email ${emailStatus || "was not sent"}`
+      );
     } catch (e) {
       toast.error(errMsg(e));
     } finally {
@@ -60,9 +65,10 @@ export const AdminOrders = () => {
         {shown?.length === 0 && <p data-testid="admin-orders-empty" className="rounded-3xl border border-dashed border-stone-300 p-10 text-center text-sm text-stone-500">No orders here yet.</p>}
         {shown?.map((o) => {
           const lastNotice = o.status_notifications?.slice(-1)[0];
+          const fulfilmentAvailable = ["paid", "pending_cod", "pending_verification", "confirmed"].includes(o.payment_status);
           return (
             <OrderCard key={o.id} order={o} admin>
-              {o.payment_status === "paid" && (
+              {fulfilmentAvailable && (
                 <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-stone-100 pt-4">
                   <label className="text-xs font-bold uppercase tracking-wider text-stone-400">Fulfilment</label>
                   <select

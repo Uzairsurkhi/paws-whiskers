@@ -13,11 +13,12 @@ import {
   Calendar,
   ChevronDown,
   Inbox,
+  RefreshCw,
 } from "lucide-react";
 
 const inrPaise = (n) => `₹ ${Math.round(Number(n || 0) / 100).toLocaleString("en-IN")}`;
 
-export function AdminOverview({ stats, orders = [], onNavigate }) {
+export function AdminOverview({ stats, orders = [], onNavigate, onRefresh }) {
   const [period, setPeriod] = useState("Last 30 days");
 
   const dates = ["Aug 10", "Aug 15", "Aug 20", "Aug 25", "Aug 30", "Sep 5"];
@@ -368,13 +369,18 @@ export function AdminOverview({ stats, orders = [], onNavigate }) {
               <h2 className="font-display text-lg font-bold text-stone-900">Recent Orders</h2>
               <p className="text-xs text-stone-500">Live order activity across India</p>
             </div>
-            <button
-              onClick={() => onNavigate("orders")}
-              className="flex items-center gap-1 text-xs font-bold text-[#EA580C] hover:underline"
-            >
-              <span>View all orders</span>
-              <ArrowRight size={14} />
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={onRefresh} className="flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-[#EA580C]">
+                <RefreshCw size={13} /> Refresh
+              </button>
+              <button
+                onClick={() => onNavigate("orders")}
+                className="flex items-center gap-1 text-xs font-bold text-[#EA580C] hover:underline"
+              >
+                <span>View all orders</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
 
           {recent.length === 0 ? (

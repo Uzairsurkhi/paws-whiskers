@@ -49,16 +49,15 @@ export default function Admin() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
+  const loadDashboard = () => {
     if (isAdmin) {
       api.admin.stats().then(setStats).catch(() => {});
-    }
-  }, [isAdmin, tab]);
-
-  useEffect(() => {
-    if (isAdmin && tab === "overview") {
       api.admin.orders().then(setRecentOrders).catch(() => setRecentOrders([]));
     }
+  };
+
+  useEffect(() => {
+    loadDashboard();
   }, [isAdmin, tab]);
 
   if (!ready) {
@@ -255,7 +254,7 @@ export default function Admin() {
         {/* Dashboard Main Content */}
         <main className="flex-1 p-6 sm:p-8">
           {tab === "overview" && (
-            <AdminOverview stats={stats} orders={recentOrders} onNavigate={handleNavigate} />
+            <AdminOverview stats={stats} orders={recentOrders} onNavigate={handleNavigate} onRefresh={loadDashboard} />
           )}
           {tab === "orders" && (
             <div className="space-y-6">

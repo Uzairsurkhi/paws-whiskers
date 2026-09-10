@@ -45,7 +45,7 @@ const INITIAL_ADDRESS = {
 
 export default function Cart() {
   const { items, subtotal, count, setQty, remove, lineKey, add, clear } = useCart();
-  const { user, ready } = useAuth();
+  const { user, ready, logout } = useAuth();
   const navigate = useNavigate();
 
   // Navigation Steps: 'cart' | 'address' | 'review'
@@ -144,6 +144,17 @@ export default function Cart() {
     setShowPaymentDrawer(true);
   };
 
+  const recoverMissingAccount = (err) => {
+    const detail = String(err?.response?.data?.detail || "").toLowerCase();
+    if (err?.response?.status !== 401 || !detail.includes("account not found")) return false;
+    logout();
+    setBusy(false);
+    setShowPaymentDrawer(false);
+    toast.error("Your session was reset after the database upgrade. Please log in again to continue payment.");
+    navigate("/login?next=/cart", { replace: true });
+    return true;
+  };
+
   const getShippingPayload = () => {
     const addr = selectedAddress || INITIAL_ADDRESS;
     return {
@@ -173,6 +184,7 @@ export default function Cart() {
       });
       window.location.href = data.checkout_url;
     } catch (err) {
+      if (recoverMissingAccount(err)) return;
       toast.error(errMsg(err));
       setBusy(false);
     }
@@ -195,6 +207,7 @@ export default function Cart() {
         state: { upiLink: data.upi_link, amount: data.amount || finalTotal },
       });
     } catch (err) {
+      if (recoverMissingAccount(err)) return;
       toast.error(errMsg(err));
       setBusy(false);
     }
@@ -217,6 +230,7 @@ export default function Cart() {
       toast.success("Order placed successfully with Cash on Delivery!");
       navigate(`/payment/success?order_id=${data.order_id}&method=cod`);
     } catch (err) {
+      if (recoverMissingAccount(err)) return;
       toast.error(errMsg(err));
       setBusy(false);
     }

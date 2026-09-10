@@ -14,7 +14,12 @@ export const AuthProvider = ({ children }) => {
     }
     api.me()
       .then(setUser)
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
+      .catch(() => {
+        // A deployment can move the store to a new database. Do not leave a
+        // stale in-memory user signed in when that account no longer exists.
+        localStorage.removeItem(TOKEN_KEY);
+        setUser(null);
+      })
       .finally(() => setReady(true));
   }, []);
 

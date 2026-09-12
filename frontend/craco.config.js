@@ -1,5 +1,6 @@
 // craco.config.js
 const path = require("path");
+const { createProxyMiddleware } = require("http-proxy-middleware");
 require("dotenv").config();
 
 // Check if we're in development/preview mode (not production build)
@@ -145,7 +146,24 @@ if (isDevServer) {
 }
 
 const configureDevServer = webpackConfig.devServer;
-webpackConfig.devServer = (devServerConfig) =>
-  makeDevServerV5Compatible(configureDevServer(devServerConfig));
+const backendProxyTarget = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
+webpackConfig.devServer = (devServerConfig) => {
+  const configured = makeDevServerV5Compatible(configureDevServer(devServerConfig));
+  const priorSetup = configured.setupMiddlewares;
+  configured.setupMiddlewares = (middlewares, devServer) => {
+    const chain = priorSetup ? priorSetup(middlewares, devServer) : middlewares;
+    chain.unshift({
+      name: "backend-api-proxy",
+      path: "/api",
+      middleware: createProxyMiddleware({
+        target: backendProxyTarget,
+        changeOrigin: true,
+      }),
+    });
+    return chain;
+  };
+  configured.allowedHosts = "all";
+  return configured;
+};
 
 module.exports = webpackConfig;

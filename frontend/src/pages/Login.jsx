@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Smartphone, Mail, Lock, KeyRound, Loader2, ArrowRight, ShieldCheck, ChevronLeft } from "lucide-react";
+import { Mail, Lock, KeyRound, Loader2, ArrowRight, ShieldCheck, ChevronLeft, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { api, errMsg } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -14,11 +14,10 @@ export default function Login() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const next = new URLSearchParams(search).get("next") || "/";
-  const [tab, setTab] = useState("password"); // "password" | "email" | "phone"
-  const [step, setStep] = useState("input"); // "input" | "code"
+  const [tab, setTab] = useState("password");
+  const [step, setStep] = useState("input");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
   const [challenge, setChallenge] = useState("");
@@ -32,25 +31,24 @@ export default function Login() {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
   }, [cooldown]);
 
-  const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
-  const isValidPhone = (val) => val.replace(/\D/g, "").length >= 10;
-  const isValidLoginIdentifier = (val) => isValidEmail(val) || isValidPhone(val);
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  const isValidLoginIdentifier = (value) => isValidEmail(value) || value.replace(/\D/g, "").length >= 10;
 
-  const handlePasswordLogin = async (e) => {
-    e.preventDefault();
+  const handlePasswordLogin = async (event) => {
+    event.preventDefault();
     if (!email.trim() || !password) return;
     setBusy(true);
     try {
-      const identifier = email.trim();
-      const res = await api.login({
-        ...(isValidEmail(identifier) ? { email: identifier.toLowerCase() } : { username: identifier }),
+      const loginId = email.trim();
+      const response = await api.login({
+        ...(isValidEmail(loginId) ? { email: loginId.toLowerCase() } : { username: loginId }),
         password,
       });
-      login(res);
+      login(response);
       toast.success("Welcome back!");
       navigate(next, { replace: true });
     } catch (err) {
@@ -59,18 +57,16 @@ export default function Login() {
     }
   };
 
-  const requestOtp = async (e) => {
-    e?.preventDefault();
+  const requestOtp = async (event) => {
+    event?.preventDefault();
     setBusy(true);
     try {
-      const payload = tab === "email" ? { email: email.trim().toLowerCase() } : { phone: phone.trim() };
-      const r = await api.requestOtp(payload);
-      const activeId = r.email || r.phone || (tab === "email" ? email : phone);
-      setIdentifier(activeId);
-      setChallenge(r.challenge || "");
+      const response = await api.requestOtp({ email: email.trim().toLowerCase() });
+      setIdentifier(response.email || response.identifier || email.trim().toLowerCase());
+      setChallenge(response.challenge || "");
       setStep("code");
       setCooldown(30);
-      toast.success(`Code requested for ${activeId}`);
+      toast.success(`Code requested for ${response.email || email}`);
       setTimeout(() => codeRef.current?.focus(), 80);
     } catch (err) {
       toast.error(errMsg(err));
@@ -79,13 +75,12 @@ export default function Login() {
     }
   };
 
-  const verify = async (e) => {
-    e.preventDefault();
+  const verify = async (event) => {
+    event.preventDefault();
     setBusy(true);
     try {
-      const target = tab === "email" ? { email: identifier } : { phone: identifier };
-      const r = await api.verifyOtp(target, code, challenge);
-      login(r);
+      const response = await api.verifyOtp({ email: identifier }, code, challenge);
+      login(response);
       toast.success("You're in!");
       navigate(next, { replace: true });
     } catch (err) {
@@ -102,11 +97,11 @@ export default function Login() {
           Welcome back to Paws &amp; Whiskers.
         </h1>
         <p className="mt-6 max-w-md text-base leading-relaxed text-stone-600 sm:text-lg">
-          Log in with your password or one-time code to track orders, manage pet details, and enjoy fast checkout.
+          Log in with your password or email code to track orders, manage pet details, and enjoy fast checkout.
         </p>
         <ul className="mt-8 space-y-3 text-sm text-stone-600">
-          {["Instant order tracking & history", "Fast checkout with saved details", "Password or passwordless login"].map((t) => (
-            <li key={t} className="flex items-center gap-2.5"><ShieldCheck size={16} className="text-teal-600" />{t}</li>
+          {["Instant order tracking & history", "Fast checkout with saved details", "Password or passwordless login"].map((item) => (
+            <li key={item} className="flex items-center gap-2.5"><ShieldCheck size={16} className="text-teal-600" />{item}</li>
           ))}
         </ul>
       </div>
@@ -120,15 +115,12 @@ export default function Login() {
       >
         {step === "input" ? (
           <div className="space-y-6">
-            {/* Tabs */}
             <div className="flex rounded-2xl bg-stone-100 p-1.5 text-xs sm:text-sm font-semibold">
               <button
                 type="button"
                 onClick={() => setTab("password")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 transition-all ${
-                  tab === "password"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500 hover:text-stone-800"
+                  tab === "password" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800"
                 }`}
               >
                 <Lock size={15} /> Password
@@ -137,23 +129,10 @@ export default function Login() {
                 type="button"
                 onClick={() => setTab("email")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 transition-all ${
-                  tab === "email"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500 hover:text-stone-800"
+                  tab === "email" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800"
                 }`}
               >
                 <Mail size={15} /> Email OTP
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("phone")}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 transition-all ${
-                  tab === "phone"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                <Smartphone size={15} /> Mobile SMS
               </button>
             </div>
 
@@ -175,7 +154,7 @@ export default function Login() {
                     inputMode="email"
                     autoComplete="username"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     placeholder="name@example.com or 98765 43210"
                     className={field}
                     required
@@ -189,7 +168,7 @@ export default function Login() {
                     type="password"
                     autoComplete="current-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(event) => setPassword(event.target.value)}
                     placeholder="••••••••"
                     className={field}
                     required
@@ -209,51 +188,30 @@ export default function Login() {
             ) : (
               <form onSubmit={requestOtp} className="space-y-5">
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-[#EA580C] ring-1 ring-orange-200">
-                  {tab === "email" ? <Mail size={22} /> : <Smartphone size={22} />}
+                  <Mail size={22} />
                 </span>
                 <div>
-                  <h2 className="font-display text-2xl font-bold tracking-tight text-stone-900">
-                    {tab === "email" ? "Log in with email code" : "Log in with mobile code"}
-                  </h2>
-                  <p className="mt-1.5 text-sm text-stone-500">
-                    {tab === "email"
-                      ? "We'll send a 6-digit verification code to your inbox."
-                      : "We'll text you a 6-digit verification code."}
-                  </p>
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-stone-900">Log in with email code</h2>
+                  <p className="mt-1.5 text-sm text-stone-500">We&apos;ll send a 6-digit verification code to your inbox.</p>
                 </div>
 
-                {tab === "email" ? (
-                  <input
-                    data-testid="login-email-input"
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className={field}
-                    required
-                    autoFocus
-                  />
-                ) : (
-                  <input
-                    data-testid="login-phone-input"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="98765 43210"
-                    className={`${field} font-mono-accent tracking-wider`}
-                    required
-                    autoFocus
-                  />
-                )}
+                <input
+                  data-testid="login-email-input"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  className={field}
+                  required
+                  autoFocus
+                />
 
                 <button
                   data-testid="login-send-otp-button"
                   type="submit"
-                  disabled={busy || (tab === "email" ? !isValidEmail(email) : !isValidPhone(phone))}
+                  disabled={busy || !isValidEmail(email)}
                   className={primary}
                 >
                   {busy ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
@@ -261,6 +219,15 @@ export default function Login() {
                 </button>
               </form>
             )}
+
+            <Link
+              to={`/login/mobile?next=${encodeURIComponent(next)}`}
+              data-testid="login-mobile-link"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#EA580C]"
+            >
+              <Smartphone size={16} />
+              Log in with mobile OTP
+            </Link>
           </div>
         ) : (
           <form onSubmit={verify} className="space-y-5">
@@ -273,7 +240,7 @@ export default function Login() {
               }}
               className="flex items-center gap-1 text-sm font-semibold text-stone-500 hover:text-[#EA580C]"
             >
-              <ChevronLeft size={16} /> Change {tab === "email" ? "email" : "number"}
+              <ChevronLeft size={16} /> Change email
             </button>
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 ring-1 ring-teal-200">
               <KeyRound size={22} />
@@ -291,7 +258,7 @@ export default function Login() {
               autoComplete="one-time-code"
               maxLength={6}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
               placeholder="••••••"
               className={`${field} font-mono-accent text-center text-2xl tracking-[0.5em]`}
               required
@@ -314,16 +281,11 @@ export default function Login() {
             >
               {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
             </button>
-            {tab === "phone" && (
-              <p className="text-center text-xs leading-relaxed text-stone-400">
-                SMS can take up to a minute. If it does not arrive, check blocked messages or use Email OTP from the previous screen.
-              </p>
-            )}
           </form>
         )}
         <div className="mt-8 space-y-2 text-center text-sm text-stone-500">
           <p>
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               to={`/signup?next=${encodeURIComponent(next)}`}
               data-testid="login-register-link"

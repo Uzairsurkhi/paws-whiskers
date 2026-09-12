@@ -40,8 +40,6 @@ def sms_enabled() -> bool:
 
 
 def is_production() -> bool:
-    if _env("ALLOW_DEV_OTP").lower() in ("1", "true", "yes"):
-        return False
     env = _env("ENVIRONMENT", "APP_ENV").lower()
     return _env("VERCEL") == "1" or env in ("production", "prod")
 
@@ -106,8 +104,13 @@ def _send_fast2sms(national: str, code: str):
         },
         timeout=20,
     )
-    resp.raise_for_status()
-    payload = resp.json()
+    try:
+        payload = resp.json()
+    except Exception:
+        payload = {}
+    if resp.status_code >= 400:
+        detail = payload.get("message") or payload.get("msg") or resp.text
+        raise RuntimeError(detail or "Fast2SMS rejected the SMS")
     if payload.get("return") is False:
         raise RuntimeError(payload.get("message") or "Fast2SMS rejected the SMS")
     return {"request_id": str(payload.get("request_id") or payload.get("message_id") or "")}

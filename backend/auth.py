@@ -18,7 +18,7 @@ from pydantic import BaseModel, EmailStr
 
 from database import db
 from mailer import send_otp_email, send_welcome_email
-from sms import OTP_TTL_MIN, is_production, send_otp_sms, sms_enabled, sms_provider
+from sms import OTP_TTL_MIN, send_otp_sms, sms_enabled, sms_provider
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth")
@@ -59,6 +59,16 @@ class RegisterRequest(BaseModel):
 class AdminLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class MobileOtpRequest(BaseModel):
+    phone: str
+
+
+class MobileVerifyRequest(BaseModel):
+    phone: str
+    code: str
+    challenge: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
@@ -166,6 +176,107 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+async def _request_mobile_otp(raw_phone: str) -> dict:
+    phone = normalize_phone(raw_phone)
+    now = datetime.now(timezone.utc)
+    window = (now - timedelta(minutes=10)).isoformat()
+    recent = await db.otps.count_documents({"phone": phone, "created_at": {"$gte": window}})
+    if recent >= OTP_MAX_PER_10MIN:
+        raise HTTPException(429, "Too many codes requested. Please wait 10 minutes and try again.")
+    code = f"{secrets.randbelow(10**6):06d}"
+    challenge = make_challenge(phone, code)
+    await db.otps.update_many({"phone": phone, "used": False}, {"$set": {"used": True}})
+    await db.otps.insert_one({
+        "identifier": phone,
+        "phone": phone,
+        "code_hash": hash_secret(code),
+        "attempts": 0,
+        "used": False,
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(minutes=OTP_TTL_MIN)).isoformat(),
+    })
+    response = {
+        "sent": True,
+        "phone": phone,
+        "identifier": phone,
+        "channel": "phone",
+        "challenge": challenge,
+        "expires_in": OTP_TTL_MIN * 60,
+    }
+    if sms_enabled():
+        try:
+            send_otp_sms(phone, code)
+        except RuntimeError as e:
+            logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
+            raise HTTPException(502, str(e) or "Couldn't send the SMS right now. Please try again.")
+        except Exception as e:
+            logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
+            raise HTTPException(502, "Couldn't send the SMS right now. Please try again.")
+        return response
+    raise HTTPException(
+        503,
+        "SMS login is not configured yet. Add FAST2SMS_API_KEY (or another SMS provider) to the environment.",
+    )
+
+
+async def _verify_otp_code(identifier: str, channel: str, code: str, challenge: Optional[str]):
+    if not re.fullmatch(r"\d{6}", code.strip()):
+        raise HTTPException(400, "Incorrect code. Please check and try again.")
+    code = code.strip()
+    now = datetime.now(timezone.utc).isoformat()
+
+    if challenge:
+        try:
+            payload = jwt.decode(challenge, JWT_SECRET, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(400, "That code has expired — request a new one.")
+        except jwt.PyJWTError:
+            raise HTTPException(400, "No active code — request a new one.")
+        if payload.get("ph") != identifier or not hmac.compare_digest(payload.get("ch", ""), _otp_digest(identifier, code)):
+            raise HTTPException(400, "Incorrect code. Please check and try again.")
+        jti = payload.get("jti")
+        if jti:
+            used = await db.otp_challenges.find_one({"jti": jti})
+            if used:
+                raise HTTPException(400, "That code has already been used — request a new one.")
+            await db.otp_challenges.insert_one({"jti": jti, "identifier": identifier, "used_at": now})
+        await db.otps.update_many({
+            "$or": [{"identifier": identifier}, {"phone": identifier}, {"email": identifier}],
+            "used": False,
+        }, {"$set": {"used": True}})
+        return await _issue_session(identifier, channel, now)
+
+    otp = await db.otps.find_one({
+        "$or": [{"identifier": identifier}, {"phone": identifier}, {"email": identifier}],
+        "used": False,
+    }, sort=[("created_at", -1)])
+    if not otp:
+        raise HTTPException(400, "No active code — request a new one.")
+    if otp["expires_at"] < now:
+        raise HTTPException(400, "That code has expired — request a new one.")
+    if otp["attempts"] >= 5:
+        await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
+        raise HTTPException(429, "Too many wrong attempts — request a new code.")
+    if not check_secret(code, otp["code_hash"]):
+        await db.otps.update_one({"_id": otp["_id"]}, {"$inc": {"attempts": 1}})
+        raise HTTPException(400, "Incorrect code. Please check and try again.")
+    await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
+    return await _issue_session(identifier, channel, now)
+
+
+@router.post("/mobile/request-otp")
+async def mobile_request_otp(req: MobileOtpRequest):
+    if not (req.phone or "").strip():
+        raise HTTPException(400, "Please enter your mobile number.")
+    return await _request_mobile_otp(req.phone)
+
+
+@router.post("/mobile/verify-otp")
+async def mobile_verify_otp(req: MobileVerifyRequest):
+    phone = normalize_phone(req.phone)
+    return await _verify_otp_code(phone, "phone", req.code, req.challenge)
+
+
 @router.post("/request-otp")
 async def request_otp(req: PhoneRequest):
     raw_email = (req.email or "").strip().lower() or ((req.phone or "").strip().lower() if "@" in (req.phone or "") else None)
@@ -213,39 +324,7 @@ async def request_otp(req: PhoneRequest):
 
     if not req.phone:
         raise HTTPException(400, "Please provide an email or phone number.")
-    phone = normalize_phone(req.phone)
-    now = datetime.now(timezone.utc)
-    window = (now - timedelta(minutes=10)).isoformat()
-    recent = await db.otps.count_documents({"phone": phone, "created_at": {"$gte": window}})
-    if recent >= OTP_MAX_PER_10MIN:
-        raise HTTPException(429, "Too many codes requested. Please wait 10 minutes and try again.")
-    code = f"{secrets.randbelow(10**6):06d}"
-    challenge = make_challenge(phone, code)
-    await db.otps.update_many({"phone": phone, "used": False}, {"$set": {"used": True}})
-    await db.otps.insert_one({
-        "identifier": phone,
-        "phone": phone,
-        "code_hash": hash_secret(code),
-        "attempts": 0,
-        "used": False,
-        "created_at": now.isoformat(),
-        "expires_at": (now + timedelta(minutes=OTP_TTL_MIN)).isoformat(),
-    })
-    if sms_enabled():
-        try:
-            send_otp_sms(phone, code)
-        except Exception as e:
-            logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
-            raise HTTPException(502, "Couldn't send the SMS right now. Please try again.")
-        return {
-            "sent": True,
-            "phone": phone,
-            "identifier": phone,
-            "channel": "phone",
-            "challenge": challenge,
-            "expires_in": OTP_TTL_MIN * 60,
-        }
-    raise HTTPException(503, "SMS service is not configured. Please use Email OTP.")
+    return await _request_mobile_otp(req.phone)
 
 
 @router.post("/verify-otp")
@@ -259,49 +338,7 @@ async def verify_otp(req: VerifyRequest):
         channel = "phone"
     else:
         raise HTTPException(400, "Please provide an email or phone number.")
-
-    code = req.code.strip()
-    if not re.fullmatch(r"\d{6}", code):
-        raise HTTPException(400, "Incorrect code. Please check and try again.")
-    now = datetime.now(timezone.utc).isoformat()
-
-    if req.challenge:
-        try:
-            payload = jwt.decode(req.challenge, JWT_SECRET, algorithms=["HS256"])
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(400, "That code has expired — request a new one.")
-        except jwt.PyJWTError:
-            raise HTTPException(400, "No active code — request a new one.")
-        if payload.get("ph") != identifier or not hmac.compare_digest(payload.get("ch", ""), _otp_digest(identifier, code)):
-            raise HTTPException(400, "Incorrect code. Please check and try again.")
-        jti = payload.get("jti")
-        if jti:
-            used = await db.otp_challenges.find_one({"jti": jti})
-            if used:
-                raise HTTPException(400, "That code has already been used — request a new one.")
-            await db.otp_challenges.insert_one({"jti": jti, "identifier": identifier, "used_at": now})
-        await db.otps.update_many({
-            "$or": [{"identifier": identifier}, {"phone": identifier}, {"email": identifier}],
-            "used": False
-        }, {"$set": {"used": True}})
-        return await _issue_session(identifier, channel, now)
-
-    otp = await db.otps.find_one({
-        "$or": [{"identifier": identifier}, {"phone": identifier}, {"email": identifier}],
-        "used": False
-    }, sort=[("created_at", -1)])
-    if not otp:
-        raise HTTPException(400, "No active code — request a new one.")
-    if otp["expires_at"] < now:
-        raise HTTPException(400, "That code has expired — request a new one.")
-    if otp["attempts"] >= 5:
-        await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
-        raise HTTPException(429, "Too many wrong attempts — request a new code.")
-    if not check_secret(code, otp["code_hash"]):
-        await db.otps.update_one({"_id": otp["_id"]}, {"$inc": {"attempts": 1}})
-        raise HTTPException(400, "Incorrect code. Please check and try again.")
-    await db.otps.update_one({"_id": otp["_id"]}, {"$set": {"used": True}})
-    return await _issue_session(identifier, channel, now)
+    return await _verify_otp_code(identifier, channel, req.code, req.challenge)
 
 
 async def _find_user_by_login(identifier: str):

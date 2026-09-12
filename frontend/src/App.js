@@ -10,6 +10,7 @@ import Home from "@/pages/Home";
 import Article from "@/pages/Article";
 import Product from "@/pages/Product";
 import Login from "@/pages/Login";
+import MobileLogin from "@/pages/MobileLogin";
 import Signup from "@/pages/Signup";
 import Cart from "@/pages/Cart";
 import Orders from "@/pages/Orders";
@@ -96,6 +97,7 @@ function App() {
           <Route path="/guides/best-cat-food-india-2026" element={<Article />} />
           <Route path="/products/:id" element={<Product />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/login/mobile" element={<MobileLogin />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/register" element={<Signup />} />
           <Route path="/cart" element={<Cart />} />

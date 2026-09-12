@@ -1,6 +1,10 @@
 import axios from "axios";
 
 export const getApiBase = () => {
+  // Dev server proxies /api to the backend (works for localhost and cloud preview URLs).
+  if (process.env.NODE_ENV !== "production") {
+    return "/api";
+  }
   if (typeof window !== "undefined" && window.location && window.location.hostname) {
     const host = window.location.hostname;
     if (host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {
@@ -35,10 +39,12 @@ export const api = {
     const payload = typeof target === "object" ? target : (String(target).includes("@") ? { email: target } : { phone: target });
     return data(http.post("/auth/request-otp", payload));
   },
+  requestMobileOtp: (phone) => data(http.post("/auth/mobile/request-otp", { phone })),
   verifyOtp: (target, code, challenge) => {
     const base = typeof target === "object" ? target : (String(target).includes("@") ? { email: target } : { phone: target });
     return data(http.post("/auth/verify-otp", { ...base, code, challenge }));
   },
+  verifyMobileOtp: (phone, code, challenge) => data(http.post("/auth/mobile/verify-otp", { phone, code, challenge })),
   register: (body) => data(http.post("/auth/register", body)),
   login: (body) => data(http.post("/auth/login", body)),
   adminLogin: (email, password) => data(http.post("/auth/admin-login", { email, password })),
@@ -66,6 +72,9 @@ export const api = {
 };
 
 export const errMsg = (e, fallback = "Something went wrong — please try again.") => {
+  if (!e?.response && e?.message === "Network Error") {
+    return "Cannot reach the server. Open http://127.0.0.1:3000/login/mobile and confirm the dev servers are running.";
+  }
   const d = e?.response?.data?.detail;
   if (typeof d === "string") return d;
   if (Array.isArray(d) && d[0]?.msg) return d[0].msg.replace(/^Value error, /, "");

@@ -11,7 +11,7 @@ JWT_SECRET=dev-jwt-secret-change-in-production
 DB_NAME=paws_whiskers
 ADMIN_EMAIL=admin@pawsandwhiskers.in
 ADMIN_PASSWORD=PawsAdmin2026!
-ALLOW_DEV_OTP=true
+SMS_PROVIDER=twofactor
 EOF
 fi
 

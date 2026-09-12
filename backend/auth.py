@@ -18,7 +18,7 @@ from pydantic import BaseModel, EmailStr
 
 from database import db
 from mailer import send_otp_email, send_welcome_email
-from sms import OTP_TTL_MIN, is_production, send_otp_sms, sms_enabled, sms_provider
+from sms import OTP_TTL_MIN, send_otp_sms, sms_enabled, sms_provider
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth")
@@ -210,10 +210,10 @@ async def _request_mobile_otp(raw_phone: str) -> dict:
             logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
             raise HTTPException(502, "Couldn't send the SMS right now. Please try again.")
         return response
-    if not is_production():
-        logger.info("Mobile OTP dev mode for %s (SMS not configured)", phone)
-        return {**response, "dev_mode": True, "dev_otp": code}
-    raise HTTPException(503, "SMS service is not configured. Please try again later or use email login.")
+    raise HTTPException(
+        503,
+        "SMS login is not configured yet. Add TWOFACTOR_API_KEY (or another SMS provider) to the environment.",
+    )
 
 
 async def _verify_otp_code(identifier: str, channel: str, code: str, challenge: Optional[str]):

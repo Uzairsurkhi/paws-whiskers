@@ -28,7 +28,6 @@ export const MOBILE_LOGIN = {
 	verifyButton: 'mobile-login-verify-button',
 	resendButton: 'mobile-login-resend-button',
 	backButton: 'mobile-login-back-button',
-	devOtpBanner: 'mobile-login-dev-otp-banner',
 	emailLink: 'mobile-login-email-link',
 	registerLink: 'mobile-login-register-link',
 };

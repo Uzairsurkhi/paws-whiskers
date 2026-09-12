@@ -40,8 +40,6 @@ def sms_enabled() -> bool:
 
 
 def is_production() -> bool:
-    if _env("ALLOW_DEV_OTP").lower() in ("1", "true", "yes"):
-        return False
     env = _env("ENVIRONMENT", "APP_ENV").lower()
     return _env("VERCEL") == "1" or env in ("production", "prod")
 

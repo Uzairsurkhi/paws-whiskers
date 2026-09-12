@@ -7,7 +7,6 @@ import { api, errMsg } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
-const field = "w-full rounded-2xl border border-stone-200 bg-white px-5 py-4 text-base text-stone-900 placeholder:text-stone-400 focus:border-[#EA580C] focus:outline-none focus:ring-4 focus:ring-orange-100";
 const primary = "flex w-full items-center justify-center gap-2 rounded-2xl bg-[#EA580C] px-6 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-[#C2410C] active:scale-[0.98] disabled:opacity-60";
 
 const digitsOnly = (value) => value.replace(/\D/g, "");
@@ -25,7 +24,6 @@ export default function MobileLogin() {
   const [normalizedPhone, setNormalizedPhone] = useState("");
   const [code, setCode] = useState("");
   const [challenge, setChallenge] = useState("");
-  const [devOtp, setDevOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
@@ -50,7 +48,6 @@ export default function MobileLogin() {
       const response = await api.requestMobileOtp(digitsOnly(phone));
       setNormalizedPhone(response.phone || response.identifier);
       setChallenge(response.challenge || "");
-      setDevOtp(response.dev_mode ? response.dev_otp || "" : "");
       setStep("otp");
       setCode("");
       setCooldown(30);
@@ -81,7 +78,6 @@ export default function MobileLogin() {
     setStep("phone");
     setCode("");
     setChallenge("");
-    setDevOtp("");
     setNormalizedPhone("");
   };
 
@@ -99,7 +95,7 @@ export default function MobileLogin() {
           {[
             "6-digit OTP valid for 5 minutes",
             "Works for new and returning customers",
-            "Secure SMS delivery in production",
+            "Delivered by SMS to your phone",
           ].map((item) => (
             <li key={item} className="flex items-center gap-2.5">
               <ShieldCheck size={16} className="text-teal-600" />
@@ -177,15 +173,6 @@ export default function MobileLogin() {
                 Code sent to <span className="font-mono-accent font-bold text-stone-800">{normalizedPhone}</span>
               </p>
             </div>
-
-            {devOtp ? (
-              <div
-                data-testid="mobile-login-dev-otp-banner"
-                className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-              >
-                Dev mode: your OTP is <span className="font-mono-accent font-bold">{devOtp}</span>
-              </div>
-            ) : null}
 
             <div className="flex justify-center">
               <InputOTP

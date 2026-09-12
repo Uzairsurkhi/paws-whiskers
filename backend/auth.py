@@ -212,7 +212,7 @@ async def _request_mobile_otp(raw_phone: str) -> dict:
         return response
     raise HTTPException(
         503,
-        "SMS login is not configured yet. Add TWOFACTOR_API_KEY (or another SMS provider) to the environment.",
+        "SMS login is not configured yet. Add FAST2SMS_API_KEY (or another SMS provider) to the environment.",
     )
 
 

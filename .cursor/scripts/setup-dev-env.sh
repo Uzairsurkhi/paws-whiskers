@@ -17,7 +17,7 @@ fi
 
 if [[ ! -f "$FRONTEND_ENV" ]]; then
   cat >"$FRONTEND_ENV" <<'EOF'
-REACT_APP_BACKEND_URL=http://localhost:8000
+REACT_APP_BACKEND_URL=http://127.0.0.1:8000
 HOST=0.0.0.0
 PORT=3000
 BROWSER=none

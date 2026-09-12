@@ -72,6 +72,9 @@ export const api = {
 };
 
 export const errMsg = (e, fallback = "Something went wrong — please try again.") => {
+  if (!e?.response && e?.message === "Network Error") {
+    return "Cannot reach the server. Open http://127.0.0.1:3000/login/mobile and confirm the dev servers are running.";
+  }
   const d = e?.response?.data?.detail;
   if (typeof d === "string") return d;
   if (Array.isArray(d) && d[0]?.msg) return d[0].msg.replace(/^Value error, /, "");

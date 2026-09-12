@@ -1,6 +1,10 @@
 import axios from "axios";
 
 export const getApiBase = () => {
+  // Dev server proxies /api to the backend (works for localhost and cloud preview URLs).
+  if (process.env.NODE_ENV !== "production") {
+    return "/api";
+  }
   if (typeof window !== "undefined" && window.location && window.location.hostname) {
     const host = window.location.hostname;
     if (host !== "localhost" && host !== "127.0.0.1" && host !== "0.0.0.0") {

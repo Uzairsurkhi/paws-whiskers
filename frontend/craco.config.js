@@ -162,6 +162,7 @@ webpackConfig.devServer = (devServerConfig) => {
     });
     return chain;
   };
+  configured.allowedHosts = "all";
   return configured;
 };
 

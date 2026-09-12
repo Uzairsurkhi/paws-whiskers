@@ -35,10 +35,12 @@ export const api = {
     const payload = typeof target === "object" ? target : (String(target).includes("@") ? { email: target } : { phone: target });
     return data(http.post("/auth/request-otp", payload));
   },
+  requestMobileOtp: (phone) => data(http.post("/auth/mobile/request-otp", { phone })),
   verifyOtp: (target, code, challenge) => {
     const base = typeof target === "object" ? target : (String(target).includes("@") ? { email: target } : { phone: target });
     return data(http.post("/auth/verify-otp", { ...base, code, challenge }));
   },
+  verifyMobileOtp: (phone, code, challenge) => data(http.post("/auth/mobile/verify-otp", { phone, code, challenge })),
   register: (body) => data(http.post("/auth/register", body)),
   login: (body) => data(http.post("/auth/login", body)),
   adminLogin: (email, password) => data(http.post("/auth/admin-login", { email, password })),

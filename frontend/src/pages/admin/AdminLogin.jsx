@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
@@ -50,7 +50,7 @@ export default function AdminLogin() {
         <button data-testid="admin-login-button" type="submit" disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-200 px-6 py-3.5 font-bold text-stone-900 transition-all hover:bg-amber-100 active:scale-[0.98] disabled:opacity-60">
           {busy ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />} Enter dashboard
         </button>
-        <p className="text-center text-xs text-stone-400">Admins with a registered phone can also use the regular mobile login.</p>
+        <p className="text-center text-xs text-stone-400">Admins with a registered phone can also use <Link to="/login/mobile" className="font-semibold text-stone-600 underline-offset-2 hover:underline">mobile OTP login</Link>.</p>
       </motion.form>
     </main>
   );

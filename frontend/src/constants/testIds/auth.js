@@ -17,6 +17,20 @@ export const LOGIN = {
 	submitButton: 'login-submit-button',
 	forgotPasswordLink: 'login-forgot-password-link',
 	registerLink: 'login-register-link',
+	mobileLink: 'login-mobile-link',
+};
+
+export const MOBILE_LOGIN = {
+	card: 'mobile-login-card',
+	phoneInput: 'mobile-login-phone-input',
+	sendOtpButton: 'mobile-login-send-otp-button',
+	otpInput: 'mobile-login-otp-input',
+	verifyButton: 'mobile-login-verify-button',
+	resendButton: 'mobile-login-resend-button',
+	backButton: 'mobile-login-back-button',
+	devOtpBanner: 'mobile-login-dev-otp-banner',
+	emailLink: 'mobile-login-email-link',
+	registerLink: 'mobile-login-register-link',
 };
 
 export const REGISTER = {

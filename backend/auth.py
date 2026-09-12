@@ -206,6 +206,9 @@ async def _request_mobile_otp(raw_phone: str) -> dict:
     if sms_enabled():
         try:
             send_otp_sms(phone, code)
+        except RuntimeError as e:
+            logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
+            raise HTTPException(502, str(e) or "Couldn't send the SMS right now. Please try again.")
         except Exception as e:
             logger.error("OTP SMS send failed via %s: %s", sms_provider(), e)
             raise HTTPException(502, "Couldn't send the SMS right now. Please try again.")
